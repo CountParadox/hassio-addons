@@ -1,4 +1,4 @@
-# ESPHome [![Discord Chat](https://img.shields.io/discord/192977908623605761)](https://discord.gg/wyJf8z8) [![GitHub release](https://img.shields.io/github/v/release/CountParadox/hassio-addons)](https://GitHub.com/CountParadox/hassio-addons/releases/)
+# CountParadox's Addons [![Discord Chat](https://img.shields.io/discord/192977908623605761)](https://discord.gg/wyJf8z8) [![GitHub release](https://img.shields.io/github/v/release/CountParadox/hassio-addons)](https://GitHub.com/CountParadox/hassio-addons/releases/)
 
 
 This is the Hass.io addon repository for CountParadox's addons.
