@@ -1,6 +1,6 @@
 {
   "name": "HTML5 Speedtest",
-  "version": "0.2",
+  "version": "0.3",
   "homeassistant":"0.91.3",
   "slug": "html5_speedtest",
   "description": "Self-hosted HTML5 Browser based network Speedtest!",
@@ -14,7 +14,7 @@
   "ports": {
     "80/tcp": 8081
   },
-  "ingress":"true",
+  "ingress":"false",
   "ingress_port":"80",
   "panel_icon":"mdi:speedometer",
   "panel_title": "Speedtest",
