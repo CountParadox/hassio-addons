@@ -1,6 +1,6 @@
 {
   "name": "HTML5 Speedtest",
-  "version": "0.3",
+  "version": "0.4",
   "homeassistant":"0.91.3",
   "slug": "html5_speedtest",
   "description": "Self-hosted HTML5 Browser based network Speedtest!",
