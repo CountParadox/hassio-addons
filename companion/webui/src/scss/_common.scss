@@ -1,0 +1,286 @@
+h4 {
+	font-weight: bold;
+}
+
+.action-buttons {
+	text-align: center;
+
+	// make compact
+	width: 1px;
+
+	.btn {
+		text-transform: uppercase;
+
+		padding: 4px;
+
+		&:disabled {
+			opacity: 0.2;
+		}
+	}
+
+	.btn-primary.disabled {
+		opacity: 0.5;
+	}
+}
+
+.alert {
+	&.margin-top {
+		margin-top: 1rem;
+	}
+}
+
+.right {
+	float: right;
+}
+
+h4,
+h5,
+legend {
+	.btn-group {
+		float: right;
+	}
+	.btn {
+		float: right;
+	}
+}
+
+.btn-group {
+	overflow: hidden;
+	&.margin-bottom {
+		margin-bottom: 1rem;
+	}
+
+	.form-switch {
+		margin-top: 0.2rem;
+	}
+}
+
+h5 {
+	font-weight: bold;
+}
+
+.table-tight {
+	width: 100%;
+}
+
+.table-tight td,
+th {
+	padding: 5px 10px;
+	border-bottom: 1px solid #ddd;
+}
+
+.table-responsive-sm {
+	border: 1px solid #ddd;
+	border-collapse: collapse;
+	box-shadow: 0px 2px 21px -10px rgba(0, 0, 0, 0.2);
+
+	th {
+		// border-radius: 10%;
+		border-bottom-width: 0px !important;
+		background-color: #f0f0f0;
+		padding-top: 6px;
+		padding-bottom: 6px;
+
+		&.fit {
+			width: 1px;
+		}
+	}
+
+	td {
+		vertical-align: middle;
+	}
+}
+
+code {
+	font-family: 'Fira Code', monospace;
+	font-size: 1.05em;
+}
+
+@supports (font-variation-settings: normal) {
+	code {
+		font-family: 'Fira Code VF', monospace;
+	}
+}
+
+.widget-clickable,
+.hand {
+	cursor: pointer;
+}
+
+.btn-danger {
+	background-color: $primary;
+}
+
+.btn-danger:hover {
+	background-color: darken($primary, 5%);
+	color: #eee;
+	animation: blinker 0.3s linear infinite;
+}
+
+.btn-danger:disabled {
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-success:disabled {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.btn-info:disabled {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+@keyframes blinker {
+	50% {
+		opacity: 0.8;
+	}
+}
+
+.c-app {
+	color: #222;
+}
+.form-control {
+	color: #333;
+}
+.form-control:focus {
+	color: #111;
+}
+.form-control[type='text']:read-only {
+	background-color: #eeeeee;
+}
+.table {
+	color: #111;
+
+	&.table-margin-top {
+		margin-top: 1rem;
+	}
+}
+
+.modal {
+	max-height: 94vh;
+	margin-top: 6vh;
+
+	.modal-header {
+		h1,
+		h2,
+		h3,
+		h4,
+		h5 {
+			margin: 0;
+		}
+	}
+}
+
+.btn-secondary {
+	background-color: lighten($secondary, 15%);
+}
+.btn-danger,
+.btn-success,
+.btn-info {
+	color: #fff;
+}
+
+.btn-success:hover {
+	color: #fff;
+}
+
+.text-right {
+	text-align: right;
+}
+.remove075right {
+	margin-right: -0.75rem;
+}
+
+.currentlyNone {
+	color: #777;
+	text-align: center;
+	padding: 30px !important;
+}
+
+.form-check-label,
+.form-label {
+	font-weight: bold;
+	align-content: center;
+}
+
+.flex {
+	display: flex;
+}
+
+.w-full {
+	width: 100%;
+}
+.gap-1rem {
+	gap: 1rem;
+}
+.gap-2rem {
+	gap: 2rem;
+}
+.flex-wrap {
+	flex-wrap: wrap;
+}
+
+.c-switch-input {
+	display: none;
+}
+
+.displayNone {
+	display: none;
+}
+
+.option-field {
+	margin-bottom: 0.75rem;
+}
+
+.noBorder td {
+	border: none;
+}
+
+.btn-undefined:disabled {
+	border-color: transparent;
+}
+
+.nav-item {
+	&.hidden {
+		display: none;
+	}
+}
+
+.form-control,
+.form-control:focus,
+.form-select {
+	background-color: #fff;
+}
+
+.float-right {
+	float: right;
+}
+
+.form-check-label {
+	margin-left: 0.25rem;
+}
+
+table .td-reorder {
+	cursor: ns-resize;
+	background-color: #f7f7f7;
+
+	padding-right: 10px;
+	padding-left: 10px;
+	vertical-align: middle;
+
+	// as narrow as possible
+	width: 0;
+}
+
+.list-group {
+	--cui-list-group-bg: #f7f7f7;
+}
+
+.form-range {
+	align-self: center;
+}
+
+.select-control {
+	// avoid blowout
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+}
