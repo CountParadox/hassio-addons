@@ -14,5 +14,9 @@ ports:
   8000/tcp: !secret web_port
 options:
   web_port: 8000
+  config_path: /config/companion/
 schema:
   web_port: int
+  config_path: str
+map:
+  config: rw
