@@ -2,4 +2,20 @@
   "name": "CountParadox's Hass.io Add-Ons",
   "url": "https://github.com/CountParadox/hassio-addons",
   "maintainer": "Lewys Martin <countparadox@gmail.com>"
+  "addons": [
+    {
+      "slug": "bitfocus_companion",
+      "name": "Bitfocus Companion",
+      "description": "Bitfocus Companion Addon for Home Assistant",
+      "version": "3.3.1",
+      "arch": [
+        "aarch64",
+        "amd64",
+        "armhf",
+        "armv7",
+        "i386"
+      ],
+      "url": "https://github.com/CountParadox/hassio-addons/tree/main/bitfocus_companion"
+    }
+  ]
 }
