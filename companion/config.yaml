@@ -20,5 +20,5 @@ schema:
   config_path: str
 map:
   config: rw
-icon: "https://github.com/bitfocus/companion/blob/main/webui/public/img/icons/256x256.png"
+icon: "https://github.com/bitfocus/companion/blob/main/webui/public/img/icons/128x128.png"
 logo: "https://github.com/bitfocus/companion/blob/main/webui/public/img/icons/256x256.png"
