@@ -22,3 +22,5 @@ map:
   config: rw
 ingress: true
 ingress_port: 8000
+icon: "https://github.com/bitfocus/companion/blob/main/webui/public/img/icons/256x256.png"
+logo: "https://github.com/bitfocus/companion/blob/main/webui/public/img/icons/256x256.png"
