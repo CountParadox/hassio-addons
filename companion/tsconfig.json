@@ -1,9 +1,0 @@
-{
-	"files": [],
-	"references": [
-		//
-		{ "path": "companion" },
-		{ "path": "shared-lib" },
-		{ "path": "webui" }
-	]
-}
