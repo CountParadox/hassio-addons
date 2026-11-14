@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.3-1
+
+- Added Home Assistant ingress: Companion can be opened inside Home Assistant,
+  from the sidebar and through remote access, without exposing port 8000.
+
 ## 5.1.3
 
 - Rebuilt the add-on on the official Bitfocus Companion image.

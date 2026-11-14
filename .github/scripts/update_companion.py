@@ -46,7 +46,8 @@ def latest_stable_tag() -> str:
 
 
 def version_key(tag: str) -> tuple[int, ...]:
-    match = STABLE_TAG.match(tag if tag.startswith("v") else f"v{tag}")
+    """Companion version as a tuple; an add-on packaging revision (5.1.3-1) is ignored."""
+    match = re.match(r"^v?(\d+)\.(\d+)\.(\d+)(?:-\d+)?$", tag)
     if not match:
         sys.exit(f"Unexpected version: {tag}")
     return tuple(int(part) for part in match.groups())

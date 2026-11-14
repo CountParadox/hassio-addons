@@ -1,5 +1,5 @@
 name: Bitfocus Companion
-version: "5.1.3"
+version: "5.1.3-1"
 slug: bitfocus_companion
 description: Control broadcast, AV and streaming gear from Stream Decks and web buttons
 url: https://github.com/CountParadox/hassio-addons/tree/master/companion
@@ -8,12 +8,17 @@ arch:
   - aarch64
 init: false
 startup: services
-boot: auto
 # Companion talks to devices with discovery, broadcast and many inbound
 # protocols, so it runs on the host network like a native install.
 host_network: true
-webui: http://[HOST]:[PORT:8000]
-watchdog: http://[HOST]:[PORT:8000]/
+# Open Companion inside Home Assistant. Port 0 lets the Supervisor pick a free
+# port, which run.sh reads back from the Supervisor API.
+ingress: true
+ingress_port: 0
+ingress_stream: true
+panel_icon: mdi:gamepad-square
+panel_title: Companion
+hassio_api: true
 map:
   - addon_config:rw
 options:

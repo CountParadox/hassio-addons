@@ -36,18 +36,26 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/config" "$RUNNER_TEMP/data"
           echo '{"admin_port": 8000}' > "$RUNNER_TEMP/data/options.json"
-          docker run -d --name companion-test -p 8000:8000 \
+          docker run -d --name companion-test -p 8000:8000 -p 8099:8099 \
+            -e INGRESS_PORT=8099 -e INGRESS_ALLOW=all \
             -v "$RUNNER_TEMP/config:/config" -v "$RUNNER_TEMP/data:/data" \
             companion-addon-test
           for attempt in $(seq 1 30); do
             if curl -fsS -o /dev/null http://localhost:8000/; then
               echo "Companion answered on port 8000"
-              exit 0
+              break
             fi
             sleep 5
           done
-          docker logs companion-test
-          exit 1
+          curl -fsS -o /dev/null http://localhost:8000/ || { docker logs companion-test; exit 1; }
+          # Through the ingress proxy the page must be rewritten to the ingress path.
+          if curl -fsS -H "X-Ingress-Path: /api/hassio_ingress/testtoken" http://localhost:8099/ \
+              | grep -q "/api/hassio_ingress/testtoken"; then
+            echo "Ingress proxy serves Companion under the ingress path"
+          else
+            docker logs companion-test
+            exit 1
+          fi
 
       - name: Commit and push
         if: steps.bump.outputs.version != ''
