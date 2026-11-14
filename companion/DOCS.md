@@ -10,8 +10,16 @@ add-on's config folder.
 ## Using it
 
 1. Install and start the add-on.
-2. Open the web interface with **Open Web UI**, or browse to
-   `http://<home-assistant-address>:8000`.
+2. Open the web interface with **Open Web UI** (inside Home Assistant), or
+   browse to `http://<home-assistant-address>:8000`.
+
+Turn on **Show in sidebar** on the add-on's Info page to get a Companion entry
+in the Home Assistant sidebar.
+
+The view inside Home Assistant uses ingress, so it also works through Home
+Assistant remote access and is protected by your Home Assistant login. Tablets,
+web buttons, Satellite and the HTTP API should use the direct address on port
+8000.
 
 ## Configuration
 
@@ -19,8 +27,8 @@ add-on's config folder.
 | --- | --- | --- |
 | `admin_port` | `8000` | Port of the Companion web interface. |
 
-The **Open Web UI** button and the watchdog always use port 8000. If you change
-`admin_port`, open the interface by address instead and turn the watchdog off.
+The watchdog always checks port 8000, so turn it off if you change
+`admin_port`. Ingress follows the port automatically.
 
 Everything else is configured inside Companion.
 

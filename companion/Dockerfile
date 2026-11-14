@@ -6,6 +6,12 @@ FROM ghcr.io/bitfocus/companion/companion:${COMPANION_VERSION}
 # Home Assistant mounts the add-on's config folder as root.
 USER root
 
+# nginx serves the Home Assistant ingress port (see ingress.conf).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx-light \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ingress.conf /etc/nginx/companion-ingress.conf.template
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
