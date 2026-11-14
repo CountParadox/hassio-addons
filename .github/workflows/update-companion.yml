@@ -1,0 +1,59 @@
+name: Update Companion add-on
+
+# Checks for a new stable Bitfocus Companion release and, when there is one,
+# bumps the add-on version, test-builds it and commits the change.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-companion
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for a new Companion release
+        id: bump
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/update_companion.py
+
+      - name: Test-build the add-on
+        if: steps.bump.outputs.version != ''
+        run: docker build --pull -t companion-addon-test companion
+
+      - name: Check that Companion launches
+        if: steps.bump.outputs.version != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/config" "$RUNNER_TEMP/data"
+          echo '{"admin_port": 8000}' > "$RUNNER_TEMP/data/options.json"
+          docker run -d --name companion-test -p 8000:8000 \
+            -v "$RUNNER_TEMP/config:/config" -v "$RUNNER_TEMP/data:/data" \
+            companion-addon-test
+          for attempt in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://localhost:8000/; then
+              echo "Companion answered on port 8000"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs companion-test
+          exit 1
+
+      - name: Commit and push
+        if: steps.bump.outputs.version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add companion
+          git commit -m "Update Bitfocus Companion to ${{ steps.bump.outputs.version }}"
+          git push

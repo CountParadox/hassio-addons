@@ -1,0 +1,43 @@
+name: Validate add-ons
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: frenck/action-addon-linter@v2
+        with:
+          path: ./companion
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Companion add-on
+        run: docker build --pull -t companion-addon-test companion
+      - name: Check that Companion launches
+        run: |
+          mkdir -p "$RUNNER_TEMP/config" "$RUNNER_TEMP/data"
+          echo '{"admin_port": 8000}' > "$RUNNER_TEMP/data/options.json"
+          docker run -d --name companion-test -p 8000:8000 \
+            -v "$RUNNER_TEMP/config:/config" -v "$RUNNER_TEMP/data:/data" \
+            companion-addon-test
+          for attempt in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://localhost:8000/; then
+              echo "Companion answered on port 8000"
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs companion-test
+          exit 1
