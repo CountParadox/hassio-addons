@@ -18,4 +18,8 @@ RUN chmod a+x /run.sh
 # Keep everything Companion stores in the add-on config folder (included in backups).
 ENV COMPANION_CONFIG_BASEDIR=/config
 
+# Health check on the port chosen in the add-on configuration.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS -o /dev/null "http://localhost:$(jq -r '.admin_port // 8000' /data/options.json 2>/dev/null || echo 8000)/" || exit 1
+
 ENTRYPOINT ["/run.sh"]

@@ -27,8 +27,7 @@ web buttons, Satellite and the HTTP API should use the direct address on port
 | --- | --- | --- |
 | `admin_port` | `8000` | Port of the Companion web interface. |
 
-The watchdog always checks port 8000, so turn it off if you change
-`admin_port`. Ingress follows the port automatically.
+Ingress and the container health check follow the port automatically.
 
 Everything else is configured inside Companion.
 

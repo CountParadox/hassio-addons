@@ -8,11 +8,9 @@ arch:
   - aarch64
 init: false
 startup: services
-boot: auto
 # Companion talks to devices with discovery, broadcast and many inbound
 # protocols, so it runs on the host network like a native install.
 host_network: true
-webui: http://[HOST]:[PORT:8000]
 # Open Companion inside Home Assistant. Port 0 lets the Supervisor pick a free
 # port, which run.sh reads back from the Supervisor API.
 ingress: true
@@ -21,7 +19,6 @@ ingress_stream: true
 panel_icon: mdi:gamepad-square
 panel_title: Companion
 hassio_api: true
-watchdog: http://[HOST]:[PORT:8000]/
 map:
   - addon_config:rw
 options:
