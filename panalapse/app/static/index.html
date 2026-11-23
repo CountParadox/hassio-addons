@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panalapse</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Panalapse</div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="live" class="active">Live</button>
+    <button data-tab="jobs">Timelapses</button>
+    <button data-tab="videos">Videos</button>
+    <button data-tab="setup">Cameras &amp; storage</button>
+  </nav>
+  <label class="pause" title="Stop all scheduled captures without disabling the jobs">
+    <input type="checkbox" id="pauseAll"> <span>Pause all</span>
+  </label>
+</header>
+
+<main>
+<!-- ============================== LIVE ============================== -->
+<section id="tab-live" class="tab active">
+  <div class="empty" id="liveEmpty" hidden>No cameras yet. Add one under <a href="#" data-goto="setup">Cameras &amp; storage</a>.</div>
+  <div class="live-grid" id="liveGrid">
+    <div class="live-col">
+    <div class="card preview-card">
+      <div class="row between">
+        <select id="liveCam"></select>
+        <div class="row gap">
+          <span id="camStatus" class="pill">–</span>
+          <label class="small">Refresh
+            <select id="refreshRate">
+              <option value="0">Off</option>
+              <option value="3000">every 3 s</option>
+              <option value="1000" selected>every 1 s</option>
+              <option value="500">2 per second</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="preview-wrap">
+        <img id="preview" alt="Camera preview">
+        <div id="previewMsg" class="preview-msg" hidden></div>
+      </div>
+      <div class="small muted" id="previewInfo">&nbsp;</div>
+    </div>
+
+    <div class="card controls-card">
+      <div class="row between"><h3>Image settings</h3>
+        <button class="secondary small-btn" id="readControls">Read from camera</button></div>
+      <div id="controlsForm" class="controls"></div>
+      <div class="row gap">
+        <button id="applyControls">Apply to camera</button>
+        <span id="controlsMsg" class="small"></span>
+      </div>
+      <details class="raw">
+        <summary>Send a raw command</summary>
+        <form id="rawForm" class="row gap">
+          <input type="text" id="rawCmd" placeholder="e.g. QID or #O1" class="grow">
+          <button type="submit">Send</button>
+        </form>
+        <pre id="rawOut" class="small"></pre>
+      </details>
+    </div>
+    </div>
+    <div class="live-col">
+    <div class="card ptz-card">
+      <h3>Pan / tilt / zoom</h3>
+      <div class="dpad" id="dpad">
+        <button data-pan="-1" data-tilt="1">↖</button>
+        <button data-pan="0" data-tilt="1">▲</button>
+        <button data-pan="1" data-tilt="1">↗</button>
+        <button data-pan="-1" data-tilt="0">◀</button>
+        <button data-stop class="stop">■</button>
+        <button data-pan="1" data-tilt="0">▶</button>
+        <button data-pan="-1" data-tilt="-1">↙</button>
+        <button data-pan="0" data-tilt="-1">▼</button>
+        <button data-pan="1" data-tilt="-1">↘</button>
+      </div>
+      <label class="block">Speed <span id="speedVal">25</span>
+        <input type="range" id="speed" min="1" max="49" value="25">
+      </label>
+      <div class="hold-row">
+        <span>Zoom</span>
+        <button class="hold" data-zoom="-1">− Wide</button>
+        <button class="hold" data-zoom="1">+ Tele</button>
+      </div>
+      <div class="hold-row">
+        <span>Focus</span>
+        <button class="hold" data-focus="-1">Near</button>
+        <button class="hold" data-focus="1">Far</button>
+      </div>
+      <div class="hold-row">
+        <span>Power</span>
+        <button id="powerOn">On</button>
+        <button id="powerOff">Standby</button>
+      </div>
+      <p class="small muted">Hold a button to move. Arrow keys and +/− also work while the preview is focused.</p>
+      <p class="small muted" id="ptzNote" hidden></p>
+    </div>
+
+    <div class="card presets-card">
+      <div class="row between"><h3>Presets</h3></div>
+      <div id="presetGrid" class="preset-grid"></div>
+      <form id="presetSave" class="row gap wrap">
+        <label>Slot <input type="number" id="presetSlot" min="1" max="100" value="1" style="width:5em"></label>
+        <label class="grow">Name <input type="text" id="presetName" placeholder="e.g. Wide of site"></label>
+        <button type="submit">Save current position</button>
+        <button type="button" id="presetRecallNum" class="secondary">Recall slot</button>
+      </form>
+    </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================== JOBS ============================== -->
+<section id="tab-jobs" class="tab">
+  <div class="row between"><h2>Timelapses</h2><button id="newJob">+ New timelapse</button></div>
+  <div id="jobList" class="job-list"></div>
+
+  <dialog id="jobDialog">
+    <form id="jobForm" method="dialog">
+      <h2 id="jobDialogTitle">Timelapse</h2>
+      <input type="hidden" name="id">
+      <div class="form-grid">
+        <label>Name <input name="name" required></label>
+        <label>Camera <select name="camera_id" required></select></label>
+        <label>Save to <select name="destination_id" required></select></label>
+        <label class="check"><input type="checkbox" name="enabled"> Enabled</label>
+      </div>
+
+      <fieldset><legend>When</legend>
+        <div class="form-grid">
+          <label>Every
+            <span class="row gap"><input type="number" name="interval_value" min="1" value="1" style="width:6em">
+            <select name="interval_unit"><option value="1">seconds</option><option value="60" selected>minutes</option><option value="3600">hours</option></select></span>
+          </label>
+          <label>From <input type="time" name="start_time"></label>
+          <label>Until <input type="time" name="end_time"></label>
+          <div class="small muted span2">Same start and end time = all day. An end time earlier than the start runs overnight.</div>
+          <div class="days span2" id="daysBox"></div>
+          <label>First day (optional) <input type="date" name="start_date"></label>
+          <label>Last day (optional) <input type="date" name="end_date"></label>
+        </div>
+        <div class="small" id="schedPreview"></div>
+      </fieldset>
+
+      <fieldset><legend>Camera setup before each shot</legend>
+        <div class="form-grid">
+          <label>Go to preset <select name="preset"></select></label>
+          <label>Wait after moving (s) <input type="number" name="settle_seconds" min="0" max="120" step="0.5"></label>
+          <label>Snapshot size <select name="resolution"></select></label>
+          <label class="check"><input type="checkbox" name="power_on"> Wake camera from standby</label>
+          <label class="check span2" title="Turn off only if nothing else ever moves or adjusts this camera"><input type="checkbox" name="reapply"> Re-send preset and settings before every shot (safest if anything else also controls the camera)</label>
+        </div>
+        <label>Exposure
+          <select name="exposure_mode">
+            <option value="leave">Leave camera as it is</option>
+            <option value="auto">Auto (iris, gain, white balance on auto)</option>
+            <option value="manual">Manual – use the values below</option>
+          </select>
+        </label>
+        <div id="jobExposure" class="controls"></div>
+        <button type="button" id="copyFromCam" class="secondary small-btn">Copy current values from camera</button>
+        <label class="block">Extra commands (one per line, sent before each shot)
+          <textarea name="custom_commands" rows="2" placeholder="e.g. OSD:48:3A"></textarea>
+        </label>
+      </fieldset>
+
+      <fieldset><legend>Files</legend>
+        <div class="form-grid">
+          <label>Folder <input name="folder_template"></label>
+          <label>File name <input name="filename_template"></label>
+        </div>
+        <div class="small muted">Placeholders: {job} {camera} {date} {time} {datetime} {year} {month} {day} {hour} {seq:06d}</div>
+        <div class="small">Example: <code id="pathExample"></code></div>
+      </fieldset>
+
+      <div class="row between dialog-actions">
+        <button type="button" id="deleteJob" class="danger">Delete</button>
+        <div class="row gap">
+          <span id="jobFormMsg" class="small"></span>
+          <button type="button" id="testJob" class="secondary">Test shot</button>
+          <button type="button" value="cancel" id="cancelJob" class="secondary">Cancel</button>
+          <button type="submit" id="saveJob">Save</button>
+        </div>
+      </div>
+      <img id="testShot" class="test-shot" hidden alt="Test shot">
+    </form>
+  </dialog>
+</section>
+
+<!-- ============================== VIDEOS ============================== -->
+<section id="tab-videos" class="tab">
+  <h2>Make a video</h2>
+  <form id="renderForm" class="card">
+    <div class="form-grid">
+      <label>From timelapse <select id="renderJob"><option value="">– pick a folder by hand –</option></select></label>
+      <label>Storage <select name="destination_id" required></select></label>
+      <label>Folder <input name="folder" placeholder="e.g. Site wide"></label>
+      <label>Video name <input name="name" placeholder="timelapse"></label>
+      <label>Frames per second <input type="number" name="fps" value="25" min="1" max="120"></label>
+      <label>Use every Nth image <input type="number" name="every_nth" value="1" min="1"></label>
+      <label>Width
+        <select name="width"><option value="0">Same as images</option><option value="3840">3840 (4K)</option><option value="1920" selected>1920 (1080p)</option><option value="1280">1280 (720p)</option></select>
+      </label>
+      <label>Quality
+        <select name="crf"><option value="16">High (bigger file)</option><option value="20" selected>Good</option><option value="26">Small file</option></select>
+      </label>
+      <label>Images from (optional) <input type="date" name="date_from"></label>
+      <label>Images until (optional) <input type="date" name="date_to"></label>
+      <label class="check"><input type="checkbox" name="deflicker" checked> Reduce flicker</label>
+      <label class="check"><input type="checkbox" name="upload" checked> Also save the video to the storage folder</label>
+    </div>
+    <div class="row gap"><button type="submit">Make video</button><span id="renderMsg" class="small"></span></div>
+  </form>
+  <div id="renderList"></div>
+  <h2>Videos</h2>
+  <div id="videoList" class="video-list"></div>
+</section>
+
+<!-- ============================== SETUP ============================== -->
+<section id="tab-setup" class="tab">
+  <div class="setup-grid">
+    <div>
+      <div class="row between"><h2>Cameras</h2><button id="newCam">+ Add camera</button></div>
+      <div id="camList"></div>
+    </div>
+    <div>
+      <div class="row between"><h2>Storage</h2><button id="newDest">+ Add storage</button></div>
+      <div id="destList"></div>
+    </div>
+  </div>
+
+  <dialog id="camDialog">
+    <form id="camForm" method="dialog">
+      <h2>Camera</h2>
+      <input type="hidden" name="id">
+      <div class="form-grid">
+        <label>Nickname <input name="name" placeholder="e.g. Roof cam"></label>
+        <label>IP address <input name="host" required placeholder="192.168.1.50"></label>
+        <label>HTTP port <input type="number" name="port" value="80"></label>
+        <label>Preview size <select name="preview_resolution">
+          <option value="0">Largest the camera offers</option><option value="1920">1920</option><option value="1280">1280</option><option value="640">640</option></select></label>
+        <label>User name <input name="username" autocomplete="off"></label>
+        <label>Password <input type="password" name="password" autocomplete="new-password" placeholder="unchanged"></label>
+      </div>
+      <p class="small muted">Tip: keep the preview size the same as your timelapse snapshot size. Some models (e.g. AW-UE4) take ~5 s to switch sizes.</p>
+      <div class="row between dialog-actions">
+        <button type="button" class="danger" id="deleteCam">Delete</button>
+        <div class="row gap"><span id="camFormMsg" class="small"></span>
+          <button type="button" class="secondary" id="cancelCam">Cancel</button>
+          <button type="submit">Save</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="destDialog">
+    <form id="destForm" method="dialog">
+      <h2>Storage</h2>
+      <input type="hidden" name="id">
+      <div class="form-grid">
+        <label>Name <input name="name" placeholder="e.g. NAS timelapse share"></label>
+        <label>Type <select name="type"><option value="smb">Network share (UNC / SMB)</option><option value="local">Folder on Home Assistant (/share, /media)</option></select></label>
+        <label class="span2">Path <input name="path" required placeholder="\\nas\timelapse\site1"></label>
+        <label class="smb-only">User name <input name="username" autocomplete="off"></label>
+        <label class="smb-only">Password <input type="password" name="password" autocomplete="new-password" placeholder="unchanged"></label>
+        <label class="smb-only">Domain (optional) <input name="domain"></label>
+      </div>
+      <div class="row between dialog-actions">
+        <button type="button" class="danger" id="deleteDest">Delete</button>
+        <div class="row gap"><span id="destFormMsg" class="small"></span>
+          <button type="button" class="secondary" id="cancelDest">Cancel</button>
+          <button type="submit">Save</button></div>
+      </div>
+    </form>
+  </dialog>
+</section>
+</main>
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>

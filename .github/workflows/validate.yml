@@ -13,11 +13,14 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        addon: [companion, panalapse]
     steps:
       - uses: actions/checkout@v4
       - uses: frenck/action-addon-linter@v2
         with:
-          path: ./companion
+          path: ./${{ matrix.addon }}
 
   build:
     runs-on: ubuntu-latest
@@ -49,3 +52,26 @@ jobs:
             docker logs companion-test
             exit 1
           fi
+
+  build-panalapse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Panalapse add-on
+        run: |
+          docker build --pull             --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.20             -t panalapse-addon-test panalapse
+      - name: Check that Panalapse launches
+        run: |
+          mkdir -p "$RUNNER_TEMP/pdata"
+          echo '{"log_level": "debug"}' > "$RUNNER_TEMP/pdata/options.json"
+          docker run -d --name panalapse-test -p 8099:8099             -v "$RUNNER_TEMP/pdata:/data" panalapse-addon-test
+          for attempt in $(seq 1 20); do
+            if curl -fsS -o /dev/null http://localhost:8099/api/state; then
+              echo "Panalapse answered on port 8099"
+              break
+            fi
+            sleep 3
+          done
+          curl -fsS http://localhost:8099/api/state || { docker logs panalapse-test; exit 1; }
+          curl -fsS -o /dev/null http://localhost:8099/ || { docker logs panalapse-test; exit 1; }
+          docker exec panalapse-test ffmpeg -version | head -1

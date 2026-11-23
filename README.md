@@ -14,6 +14,7 @@ For feature requests, please create an [issue](https://github.com/CountParadox/h
 | Add-on | Description |
 | --- | --- |
 | [Bitfocus Companion](companion) | Bitfocus Companion, built on the official image and updated automatically when Bitfocus publishes a stable release. |
+| [Panalapse](panalapse) | Timelapses, live preview, PTZ and presets for Panasonic AW-series PTZ cameras, saved to a network share. |
 | [HTML5 Speedtest](speedtest) | Not maintained. |
 
 ## Installing
