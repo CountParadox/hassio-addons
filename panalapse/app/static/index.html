@@ -93,10 +93,11 @@
         <button class="hold" data-focus="-1">Near</button>
         <button class="hold" data-focus="1">Far</button>
       </div>
-      <div class="hold-row">
-        <span>Power</span>
-        <button id="powerOn">On</button>
-        <button id="powerOff">Standby</button>
+      <div class="once-row">
+        <span>Auto once</span>
+        <button class="secondary" data-once="af" title="One-touch auto focus (focus mode must be manual)">Focus</button>
+        <button class="secondary" data-once="awb" title="Auto white balance set (white balance must be AWB A or B)">White</button>
+        <button class="secondary" data-once="abb" title="Auto black balance set">Black</button>
       </div>
       <p class="small muted">Hold a button to move. Arrow keys and +/− also work while the preview is focused.</p>
       <p class="small muted" id="ptzNote" hidden></p>

@@ -75,6 +75,7 @@ legend { font-weight: 600; padding: 0 4px; }
 .dpad button { font-size: 20px; padding: 0; touch-action: none; user-select: none; }
 .dpad .stop { background: var(--chip); color: var(--danger); }
 .hold-row { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 6px; align-items: center; margin: 6px 0; }
+.once-row { display: grid; grid-template-columns: 52px repeat(3, 1fr); gap: 6px; align-items: center; margin: 6px 0; }
 .hold { touch-action: none; user-select: none; }
 .dpad button.held, .hold.held { filter: brightness(1.3); outline: 2px solid var(--accent); }
 

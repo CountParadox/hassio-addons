@@ -2,7 +2,7 @@
 
 Timelapse capture for Panasonic AW-series PTZ cameras, all over IP:
 
-- **Live preview** with pan / tilt / zoom / focus controls (hold a button, or use the arrow keys)
+- **Live preview** with pan / tilt / zoom / focus controls (hold a button, or use the arrow keys), plus one-touch auto focus, white balance and black balance
 - **Presets**: save the current position to any slot (1–100) with a name and a thumbnail, and recall it
 - **Several cameras**, each with a nickname
 - **Scheduled timelapses**: interval, start / end time (overnight windows allowed), days of the week, optional date range
@@ -39,6 +39,16 @@ The defaults, folder `{job}/{date}` and file `{job}_{datetime}.jpg`, keep one fo
 Each timelapse can either **leave the camera alone**, set it to **Auto** (iris, gain, white balance and so on to auto, as far as the model allows) or apply **Manual** values. Only the settings your camera reported when it was detected are shown. Settings are re-sent whenever something else (another timelapse, or you on the Live page) has touched the camera.
 
 For anything the form doesn't cover, add raw Panasonic commands under *Extra commands*, one per line, e.g. `OSD:48:3A`. Commands starting with `#` go to `aw_ptz`, the rest to `aw_cam`. You can try commands on the Live page under *Send a raw command*.
+
+### Auto once
+
+The **Auto once** buttons on the Live page run the camera's one-shot functions:
+
+- **Focus**: one-touch auto focus (`OSE:69:1`). The camera focuses once and then stays put, so the focus mode needs to be *Manual*.
+- **White**: auto white balance set (`OWS`). It stores the result in the AWB A or AWB B memory, so set white balance to one of those first.
+- **Black**: auto black balance set (`OAS`).
+
+If the camera doesn't support a function, or it isn't allowed in the current mode, you'll see a message saying which.
 
 ### Model notes
 

@@ -204,6 +204,29 @@ class PanasonicCamera:
     async def preset_delete(self, n: int):
         return await self.command_checked(f"#C{n - 1:02d}")
 
+    ONE_TOUCH = {
+        "af": ("OSE:69:1", "One-touch auto focus"),
+        "awb": ("OWS", "Auto white balance set"),
+        "abb": ("OAS", "Auto black balance set"),
+    }
+
+    async def one_touch(self, kind: str) -> str:
+        """Run a one-shot function: af (focus once), awb (white set), abb (black set)."""
+        cmd, label = self.ONE_TOUCH[kind]
+        reply = await self.command(cmd)
+        code = reply[:3].upper()
+        if code == "ER1":
+            raise CameraError(f"{label} isn't supported by this camera ({cmd} → ER1)")
+        if code == "ER3":
+            hint = {"af": "switch focus to manual first",
+                    "awb": "set white balance to AWB A or AWB B first",
+                    "abb": ""}[kind]
+            raise CameraError(f"{label} isn't available in the current mode"
+                              + (f": {hint}" if hint else "") + f" ({cmd} → ER3)")
+        if code.startswith("ER"):
+            raise CameraError(f"{label}: camera replied {reply}")
+        return reply
+
     async def power(self, on: bool):
         return await self.command(f"#O{1 if on else 0}")
 

@@ -232,6 +232,12 @@ def build_app() -> web.Application:
                 e.touched()
                 await e.client.focus(int(b.get("dir", 0)) * speed)
                 e.arm_watchdog()
+            elif action == "onetouch":
+                kind = b.get("kind")
+                if kind not in PanasonicCamera.ONE_TOUCH:
+                    return err(ValueError(f"unknown one-touch function {kind!r}"), 400)
+                e.touched()
+                await e.client.one_touch(kind)
             elif action == "refresh":
                 e.arm_watchdog()
             elif action == "stop":
@@ -291,17 +297,6 @@ def build_app() -> web.Application:
         if not os.path.exists(p):
             raise web.HTTPNotFound()
         return web.FileResponse(p, headers={"Cache-Control": "no-cache"})
-
-    @routes.post("/api/cameras/{cid}/power")
-    async def power(req):
-        e = core.cam(req)
-        b = await req.json()
-        try:
-            await e.client.power(bool(b.get("on")))
-        except CameraError as ex:
-            return err(ex, 502)
-        e.touched()
-        return web.json_response({"ok": True})
 
     @routes.get("/api/cameras/{cid}/controls")
     async def get_controls(req):

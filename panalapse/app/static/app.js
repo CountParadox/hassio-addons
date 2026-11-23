@@ -212,13 +212,15 @@ wrap.addEventListener("keydown", (e) => {
 wrap.addEventListener("keyup", (e) => { if (e.key === keyHeld) { keyHeld = null; stopHold(); } });
 wrap.addEventListener("blur", () => { keyHeld = null; stopHold(); });
 
-$("#powerOn").addEventListener("click", async () => {
-  try { await api(`api/cameras/${liveCam}/power`, { body: { on: true } }); toast("Power on sent"); } catch (e) { toast(e.message, true); }
-});
-$("#powerOff").addEventListener("click", async () => {
-  if (!confirm("Put the camera into standby? Scheduled timelapses on this camera will wake it again if “Wake camera” is ticked.")) return;
-  try { await api(`api/cameras/${liveCam}/power`, { body: { on: false } }); toast("Standby sent"); } catch (e) { toast(e.message, true); }
-});
+const ONCE_DONE = { af: "Focusing once", awb: "White balance set", abb: "Black balance set" };
+$$("[data-once]").forEach((b) => b.addEventListener("click", async () => {
+  b.disabled = true;
+  try {
+    await api(`api/cameras/${liveCam}/ptz`, { body: { action: "onetouch", kind: b.dataset.once } });
+    toast(ONCE_DONE[b.dataset.once]);
+  } catch (e) { toast(e.message, true); }
+  finally { b.disabled = false; }
+}));
 
 // ---- presets
 function renderPresets() {
