@@ -73,6 +73,8 @@ If the camera doesn't support a function, or it isn't allowed in the current mod
   - Snapshots go up to 1280×720. Changing snapshot size takes the camera about 5 seconds, so keep the preview size the same as the timelapse size (the default, "largest", does that).
   - Over IP it lets you change **brightness (−4…+4)** and **white balance** (ATW, AWB A/B, 3200K, 5600K). Iris, gain and shutter are read-only.
   - Pan and tilt move within the picture, so they only work once you've zoomed in.
+  - Focus can't be controlled over IP: **Auto once → Focus** reports "not supported".
+  - **Auto once → White** works when white balance is set to AWB A or AWB B.
 - Larger models (UE150, UE100, HE130 …) support 1920 snapshots and the full manual exposure set.
 
 **Detect** (Cameras & storage) works out what your camera allows. It tries each setting and then puts the original value back, so the picture changes briefly for about 30 seconds. It runs when you add a camera or press Detect. When the add-on starts it only re-reads the model and the current values.
@@ -150,6 +152,7 @@ With MQTT you can trigger on the timelapse's **Problem** sensor instead, for exa
 ## Troubleshooting
 
 - **Camera shows offline**: check you can open `http://<camera-ip>/` from the HA host's network. These cameras' web servers can stop answering for a short while if they get too many requests too fast; Panalapse spaces its requests out, but other software polling the camera at the same time can still trigger it.
+- **Live picture doesn't load**: the message under the picture now says why. "Larger than this camera offers" means the camera's *Preview size* (Cameras & storage → Edit) is bigger than it supports; set it to *Largest the camera offers*.
 - **"ER3" errors** when applying settings: the camera refused that value in its current mode (for example, setting the iris position while the iris is on auto).
 - **MQTT shows "no broker"**: install and start the Mosquitto broker add-on, then press **Save** on the Home Assistant card (or restart Panalapse).
 - **Storage test fails**: use the server's IP instead of its name, check that the share allows SMB2 or SMB3, and for a domain account fill in *Domain*.

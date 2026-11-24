@@ -398,7 +398,17 @@ class PanasonicCamera:
         for attempt in range(tries):
             r = await self._get("/cgi-bin/camera", {"resolution": str(resolution)}, timeout=15)
             if r.status_code != 200 or not r.content.startswith(b"\xff\xd8"):
-                raise CameraError(f"snapshot at {resolution}: HTTP {r.status_code}")
+                smaller = [s for s in SNAP_RESOLUTIONS if s < resolution]
+                if not self.max_resolution and smaller and r.status_code in (400, 404, 500, 501):
+                    # Asked for more than the camera offers (an AW-UE4 answers 1920 with
+                    # HTTP 500) before Detect has run: use the next size down from now on.
+                    log.info("%s: snapshot at %s refused (HTTP %s), trying %s",
+                             self.host, resolution, r.status_code, smaller[0])
+                    data = await self.snapshot(smaller[0], verify)
+                    self.max_resolution = min(self.max_resolution or smaller[0], smaller[0])
+                    return data
+                raise CameraError(f"snapshot at {resolution}: HTTP {r.status_code}"
+                                  + (" (larger than this camera offers?)" if r.status_code == 500 else ""))
             data = r.content
             self._snap_res = resolution
             if not verify:

@@ -153,10 +153,15 @@ function loadPreview() {
     $("#previewInfo").textContent = `${next.naturalWidth}×${next.naturalHeight} · fetched in ${Math.round(performance.now() - t0)} ms · ${new Date().toLocaleTimeString()}`;
     schedulePreview();
   };
-  next.onerror = () => {
+  next.onerror = async () => {
+    let why = "";
+    try {   // the image request only says "failed"; ask again for the reason
+      const r = await fetch(next.src);
+      if (!r.ok) { const d = await r.json().catch(() => null); why = d?.error || `HTTP ${r.status}`; }
+    } catch (e) { why = e.message; }
     previewBusy = false;
     const m = $("#previewMsg"); m.hidden = false;
-    m.textContent = "Couldn't get a picture from the camera – retrying…";
+    m.textContent = "Couldn't get a picture from the camera" + (why ? `: ${why}` : "") + " – retrying…";
     schedulePreview(Math.max(3000, Number($("#refreshRate").value)));
   };
   next.src = `api/cameras/${liveCam}/snapshot?t=${Date.now()}`;
@@ -826,6 +831,12 @@ function openCam(c) {
   camForm.id.value = c?.id || ""; camForm.password.value = "";
   camForm.password.placeholder = c?.has_password ? "unchanged" : "";
   $("#deleteCam").hidden = !c; $("#camFormMsg").textContent = "";
+  const max = c?.info?.max_resolution;
+  [...camForm.preview_resolution.options].forEach((o) => {
+    o.disabled = !!(max && +o.value > max);
+    o.textContent = o.textContent.replace(/ \(not on this camera\)$/, "") + (o.disabled ? " (not on this camera)" : "");
+  });
+  if (camForm.preview_resolution.selectedOptions[0]?.disabled) camForm.preview_resolution.value = "0";
   $("#camDialog").showModal();
 }
 function openDest(d) {

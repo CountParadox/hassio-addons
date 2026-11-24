@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+- Fixed the live preview failing when a camera was set to a bigger preview size than it supports (e.g. 1920 on an AW-UE4) before it had been detected. The add-on now steps down to the largest size that works and remembers it.
+- A camera that was offline when it was added, or when the add-on started, is now detected as soon as it answers.
+- When the live picture can't be loaded, the message says why.
+- The camera form no longer offers preview sizes the camera can't do.
+
 ## 0.2.1
 - **Find cameras**: scans your network for Panasonic AW cameras and adds one with a click. Suggests the network Home Assistant is on, accepts subnets and ranges, and handles cameras that need a login.
 

@@ -36,6 +36,7 @@ class CameraEntry:
         self.client.max_resolution = info.get("max_resolution")
         self.client.model = info.get("model")
         self.job_lock = asyncio.Lock()
+        self.probing = False
         self.last_frame: bytes | None = None
         self.current_preset: int | None = None
         self.applied_by: str | None = None     # job id whose settings are on the camera
@@ -43,6 +44,10 @@ class CameraEntry:
 
     def max_resolution(self) -> int:
         return self.client.max_resolution or 1280
+
+    @property
+    def detected(self) -> bool:
+        return bool((self.config.get("info") or {}).get("model"))
 
     def touched(self):
         """Someone moved the camera or changed a setting by hand."""
@@ -71,6 +76,7 @@ class App:
     def __init__(self):
         self.store = Store()
         self.cameras: dict[str, CameraEntry] = {}
+        self.probe_camera = None        # set by build_app: full Detect for a camera id
         for c in self.store.data["cameras"]:
             self.cameras[c["id"]] = CameraEntry(c)
         self.scheduler = Scheduler(self)
@@ -121,15 +127,21 @@ class App:
         """Check idle cameras now and then so 'online' stays true to life."""
         while True:
             await asyncio.sleep(30)
-            for e in list(self.cameras.values()):
+            for cid, e in list(self.cameras.items()):
                 if e.job_lock.locked() or time.monotonic() - e.client._last < 25:
                     continue
                 try:
                     await e.client.command("#O")
                 except CameraError:
-                    pass
+                    continue
                 except Exception:
                     log.debug("health check failed", exc_info=True)
+                    continue
+                if not e.detected and not e.probing and self.probe_camera:
+                    # Added (or started) while the camera was offline: detect it now.
+                    log.info("%s is answering now, detecting it", e.config.get("name"))
+                    e.probing = True
+                    asyncio.create_task(self.probe_camera(cid))
 
     def destination(self, dest_id: str | None) -> Destination | None:
         d = self.store.get("destinations", dest_id or "")
@@ -242,13 +254,26 @@ def build_app() -> web.Application:
 
     async def _probe(cid: str, write_tests: bool = True) -> dict:
         entry = core.cameras[cid]
-        async with entry.job_lock:      # don't test settings in the middle of a capture
-            info = await entry.client.probe(write_tests, previous=entry.config.get("info"))
+        entry.probing = True
+        try:
+            async with entry.job_lock:      # don't test settings in the middle of a capture
+                info = await entry.client.probe(write_tests, previous=entry.config.get("info"))
+        finally:
+            entry.probing = False
         entry.touched()
         if info.get("model"):
             entry.config["info"] = info
             core.store.save()
         return info
+
+    core.probe_camera = _probe
+
+    def _remember_max(e: CameraEntry):
+        """The snapshot code may have learnt the largest size; keep it."""
+        info = e.config.get("info")
+        if info is not None and e.client.max_resolution and info.get("max_resolution") != e.client.max_resolution:
+            info["max_resolution"] = e.client.max_resolution
+            core.store.save()
 
     @routes.delete("/api/cameras/{cid}")
     async def delete_camera(req):
@@ -317,6 +342,8 @@ def build_app() -> web.Application:
                 e.last_frame = data
             except CameraError as ex:
                 return err(ex, 502)
+            finally:
+                _remember_max(e)
         return web.Response(body=data, content_type="image/jpeg",
                             headers={"Cache-Control": "no-store"})
 
