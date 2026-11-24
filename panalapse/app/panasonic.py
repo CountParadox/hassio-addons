@@ -153,7 +153,12 @@ class PanasonicCamera:
                 return r
             except httpx.HTTPError as e:
                 self.online = False
-                self.last_error = f"{type(e).__name__}: {e}" or type(e).__name__
+                if isinstance(e, httpx.TimeoutException):
+                    self.last_error = "no answer (timed out)"
+                elif isinstance(e, httpx.ConnectError):
+                    self.last_error = f"can't connect ({e})" if str(e) else "can't connect"
+                else:
+                    self.last_error = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
                 raise CameraError(f"{self.host}: {self.last_error}") from e
             finally:
                 self._last = time.monotonic()

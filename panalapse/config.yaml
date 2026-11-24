@@ -1,5 +1,5 @@
 name: Panalapse
-version: "0.1.1"
+version: "0.2.0"
 slug: panalapse
 description: Timelapse capture, live preview, PTZ and presets for Panasonic AW-series PTZ cameras
 url: https://github.com/CountParadox/hassio-addons/tree/master/panalapse
@@ -10,6 +10,10 @@ init: false
 ingress: true
 panel_icon: mdi:timelapse
 panel_title: Panalapse
+# Ask Home Assistant for its MQTT broker, and send events / notifications to it
+services:
+  - mqtt:want
+homeassistant_api: true
 map:
   - share:rw
   - media:rw

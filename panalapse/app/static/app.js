@@ -68,6 +68,7 @@ function showTab(name) {
   $$(".tab").forEach((t) => t.classList.toggle("active", t.id === "tab-" + name));
   localStorage.setItem("tab", name);
   if (name === "live") schedulePreview(0);
+  if (name === "images") imagesShown();
 }
 $$("#tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 document.addEventListener("click", (e) => {
@@ -87,6 +88,8 @@ async function refresh() {
   renderJobs();
   renderSetup();
   renderVideos();
+  renderImagesHeader();
+  renderHa();
 }
 setInterval(refresh, 2000);
 $("#pauseAll").addEventListener("change", async (e) => {
@@ -404,13 +407,14 @@ function renderJobs() {
         <button class="secondary small-btn" data-job-edit="${j.id}">Edit</button>
         <button class="secondary small-btn" data-job-toggle="${j.id}">${j.enabled ? "Disable" : "Enable"}</button>
         <button class="secondary small-btn" data-job-now="${j.id}">Capture now</button>
+        <button class="secondary small-btn" data-job-images="${j.id}">Images</button>
         <button class="secondary small-btn" data-job-video="${j.id}">Make video</button>
       </div></div>`;
   }).join("");
 }
 $("#jobList").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b) return;
-  const id = b.dataset.jobEdit || b.dataset.jobToggle || b.dataset.jobNow || b.dataset.jobVideo;
+  const id = b.dataset.jobEdit || b.dataset.jobToggle || b.dataset.jobNow || b.dataset.jobVideo || b.dataset.jobImages;
   const job = S.jobs.find((j) => j.id === id);
   if (b.dataset.jobEdit) openJob(job);
   if (b.dataset.jobToggle) { await api("api/jobs", { body: { id, enabled: !job.enabled } }); refresh(); }
@@ -420,6 +424,7 @@ $("#jobList").addEventListener("click", async (e) => {
     catch (err) { toast(err.message, true); }
     refresh();
   }
+  if (b.dataset.jobImages) { img.job = id; $("#imgJob").value = id; img.loaded = ""; showTab("images"); }
   if (b.dataset.jobVideo) { showTab("videos"); $("#renderJob").value = id; $("#renderJob").dispatchEvent(new Event("change")); }
 });
 
@@ -611,6 +616,190 @@ $("#videoList").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-delvid]"); if (!b) return;
   if (!confirm(`Delete ${b.dataset.delvid} from the add-on? (Any copy on your storage is kept.)`)) return;
   await api(`api/videos/${encodeURIComponent(b.dataset.delvid)}`, { method: "DELETE" }); refresh();
+});
+
+// ================================================================== IMAGES
+const IMG_PAGE = 120;
+const img = { job: localStorage.getItem("imgJob") || "", day: "", days: [], all: [], page: 0, step: 1,
+  folder: "", loaded: "", lastCapture: null };
+const imgUrl = (p, size) => `api/jobs/${img.job}/image?p=${encodeURIComponent(p)}&size=${size}`;
+const shownImages = () => img.all.filter((_, i) => i % img.step === 0);
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function fmtDay(s) {
+  const d = new Date(s + "T12:00:00");
+  return s === todayStr() ? "Today" : d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+function imgMessage(msg) {
+  $("#imgEmpty").innerHTML = msg; $("#imgEmpty").hidden = !msg;
+  if (msg) { $("#imgGrid").innerHTML = ""; $("#imgPager").hidden = true; }
+}
+function renderImagesHeader() {
+  const sel = $("#imgJob");
+  const sig = S.jobs.map((j) => j.id + j.name).join();
+  if (sel.dataset.sig !== sig) {
+    if (!S.jobs.find((j) => j.id === img.job)) img.job = S.jobs[0]?.id || "";
+    options(sel, S.jobs.map((j) => [j.id, j.name]), img.job);
+    sel.dataset.sig = sig;
+  }
+  // new frames for the day being looked at: fetch the list again
+  const job = S.jobs.find((j) => j.id === img.job);
+  const last = job?.runtime.last_capture || null;
+  if (activeTab === "images" && img.loaded === img.job && last !== img.lastCapture) {
+    img.lastCapture = last;
+    if (img.day === todayStr() || !img.days.length) loadDays(false, true);
+  }
+}
+function imagesShown() {
+  if (img.loaded !== img.job) loadDays();
+}
+async function loadDays(refresh = false, quiet = false) {
+  if (!img.job) { imgMessage("No timelapses yet."); return; }
+  const forJob = img.job;
+  img.loaded = img.job;
+  img.lastCapture = S.jobs.find((j) => j.id === img.job)?.runtime.last_capture || null;
+  if (!quiet) { $("#imgInfo").textContent = "Reading the folder…"; imgMessage(""); }
+  try {
+    const r = await api(`api/jobs/${forJob}/days${refresh ? "?refresh=1" : ""}`);
+    if (forJob !== img.job) return;
+    img.days = r.days; img.folder = r.folder || "";
+    const keep = r.days.some((d) => d.day === img.day) ? img.day : r.days[0]?.day || "";
+    options($("#imgDay"), r.days.map((d) => [d.day, `${fmtDay(d.day)} · ${d.count} (${d.first}–${d.last})`]), keep);
+    if (!r.days.length) {
+      $("#imgInfo").textContent = "";
+      imgMessage(`No images yet in <code>${esc(img.folder)}</code>.`);
+      return;
+    }
+    const changedDay = img.day !== keep;
+    img.day = keep;
+    await loadImages(quiet && !changedDay);
+  } catch (e) {
+    $("#imgInfo").textContent = "";
+    imgMessage(`Couldn't read the images: ${esc(e.message)}`);
+  }
+}
+async function loadImages(keepPage = false) {
+  const forKey = img.job + img.day;
+  const r = await api(`api/jobs/${img.job}/images?day=${encodeURIComponent(img.day)}`);
+  if (forKey !== img.job + img.day) return;
+  const wasAtEnd = img.page >= Math.ceil(shownImages().length / IMG_PAGE) - 1;
+  img.all = r.images;
+  const pages = Math.max(1, Math.ceil(shownImages().length / IMG_PAGE));
+  // start at the newest page for today, at the start for earlier days
+  if (!keepPage) img.page = img.day === todayStr() ? pages - 1 : 0;
+  else if (wasAtEnd) img.page = pages - 1;
+  img.page = Math.min(img.page, pages - 1);
+  renderGrid();
+}
+function renderGrid() {
+  const list = shownImages();
+  imgMessage(list.length ? "" : "No images for this day.");
+  const pages = Math.max(1, Math.ceil(list.length / IMG_PAGE));
+  const start = img.page * IMG_PAGE;
+  const sig = img.job + img.day + img.step + img.page + list.length;
+  if ($("#imgGrid").dataset.sig !== sig) {
+    $("#imgGrid").dataset.sig = sig;
+    $("#imgGrid").innerHTML = list.slice(start, start + IMG_PAGE).map((it, k) =>
+      `<figure data-i="${start + k}"><img loading="lazy" src="${imgUrl(it.p, "thumb")}" alt=""><figcaption>${esc(it.t)}</figcaption></figure>`).join("");
+  }
+  $("#imgPager").hidden = pages <= 1;
+  $("#imgPage").textContent = `Page ${img.page + 1} of ${pages}`;
+  $("#imgPrev").disabled = img.page === 0;
+  $("#imgNext").disabled = img.page >= pages - 1;
+  $("#imgInfo").innerHTML = `${img.all.length} images${img.step > 1 ? `, showing ${list.length}` : ""} · <code>${esc(img.folder)}</code>`;
+}
+$("#imgJob").addEventListener("change", (e) => { img.job = e.target.value; localStorage.setItem("imgJob", img.job); img.day = ""; loadDays(); });
+$("#imgDay").addEventListener("change", (e) => { img.day = e.target.value; loadImages().catch((er) => imgMessage(esc(er.message))); });
+$("#imgStep").addEventListener("change", (e) => { img.step = Number(e.target.value); img.page = 0; renderGrid(); });
+$("#imgRefresh").addEventListener("click", () => loadDays(true));
+$("#imgPrev").addEventListener("click", () => { img.page--; renderGrid(); window.scrollTo(0, 0); });
+$("#imgNext").addEventListener("click", () => { img.page++; renderGrid(); window.scrollTo(0, 0); });
+$("#imgGrid").addEventListener("click", (e) => {
+  const f = e.target.closest("figure"); if (f) openViewer(Number(f.dataset.i));
+});
+
+// ---- viewer
+let vIdx = 0, vTimer = null;
+const vList = () => shownImages();
+function vShow(i, size = "full") {
+  const list = vList();
+  if (!list.length) return;
+  vIdx = Math.max(0, Math.min(list.length - 1, i));
+  const it = list[vIdx];
+  $("#vImg").src = imgUrl(it.p, size);
+  $("#vTime").textContent = `${fmtDay(img.day)} ${it.t}`;
+  $("#vName").textContent = it.p.split("/").pop();
+  $("#vDownload").href = imgUrl(it.p, "full") + "&download=1";
+  $("#vSlider").max = list.length - 1; $("#vSlider").value = vIdx;
+  $("#vPos").textContent = `${vIdx + 1} / ${list.length}`;
+  // warm the cache for the next frames
+  for (let k = 1; k <= (vTimer ? 6 : 1); k++) {
+    const n = list[vIdx + k]; if (n) new Image().src = imgUrl(n.p, vTimer ? "medium" : size);
+  }
+}
+function openViewer(i) { vStop(); $("#viewer").showModal(); vShow(i); }
+function vStop() { clearInterval(vTimer); vTimer = null; $("#vPlay").textContent = "▶ Play"; }
+function vPlay() {
+  if (vTimer) { vStop(); vShow(vIdx); return; }
+  if (vIdx >= vList().length - 1) vIdx = 0;
+  $("#vPlay").textContent = "❚❚ Pause";
+  vTimer = setInterval(() => {
+    if (vIdx >= vList().length - 1) { vStop(); vShow(vIdx); return; }
+    vShow(vIdx + 1, "medium");
+  }, 1000 / Number($("#vSpeed").value));
+}
+$("#vPrev").addEventListener("click", () => { vStop(); vShow(vIdx - 1); });
+$("#vNext").addEventListener("click", () => { vStop(); vShow(vIdx + 1); });
+$("#vClose").addEventListener("click", () => $("#viewer").close());
+$("#vPlay").addEventListener("click", vPlay);
+$("#vSpeed").addEventListener("change", () => { if (vTimer) { vStop(); vPlay(); } });
+$("#vSlider").addEventListener("input", (e) => { vStop(); vShow(Number(e.target.value), "thumb"); });
+$("#vSlider").addEventListener("change", (e) => vShow(Number(e.target.value)));
+$("#viewer").addEventListener("close", vStop);
+$("#viewer").addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT") return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); vStop(); vShow(vIdx - 1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); vStop(); vShow(vIdx + 1); }
+  if (e.key === " ") { e.preventDefault(); vPlay(); }
+});
+$("#viewer").addEventListener("click", (e) => { if (e.target === $("#viewer")) $("#viewer").close(); });
+let swipeX = null;   // swipe left / right on phones
+$("#vImg").addEventListener("touchstart", (e) => { swipeX = e.touches[0].clientX; }, { passive: true });
+$("#vImg").addEventListener("touchend", (e) => {
+  if (swipeX === null) return;
+  const dx = e.changedTouches[0].clientX - swipeX; swipeX = null;
+  if (Math.abs(dx) > 40) { vStop(); vShow(vIdx + (dx < 0 ? 1 : -1)); }
+});
+
+// ================================================================== HOME ASSISTANT
+const haForm = $("#haForm");
+function syncMqttMode() { $$(".mqtt-custom", haForm).forEach((el) => (el.hidden = haForm.mode.value !== "custom")); }
+haForm.mode.addEventListener("change", syncMqttMode);
+function renderHa() {
+  const m = S.mqtt || {};
+  const pill = $("#mqttStatus");
+  const label = { connected: "connected", connecting: "connecting…", error: "error", unavailable: "no broker", off: "off" }[m.status] || m.status;
+  pill.textContent = label;
+  pill.className = "pill " + ({ connected: "ok", connecting: "warn", error: "bad", unavailable: "warn" }[m.status] || "");
+  $("#mqttDetail").textContent = [m.broker && m.status !== "off" ? m.broker : "", m.detail].filter(Boolean).join(" · ");
+  if (haForm.contains(document.activeElement) && document.activeElement !== haForm.querySelector("button")) return;
+  const sig = JSON.stringify([m.settings, S.ha]);
+  if (haForm.dataset.sig === sig) return;
+  haForm.dataset.sig = sig;
+  fillForm(haForm, { ...m.settings, password: "", ha_notifications: S.ha?.notifications });
+  haForm.password.placeholder = m.settings?.has_password ? "unchanged" : "";
+  syncMqttMode();
+}
+haForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = formData(haForm);
+  const { ha_notifications, ...mqtt } = f;
+  $("#haMsg").textContent = "Saving…";
+  try {
+    await api("api/settings", { body: { ha_notifications, mqtt: { ...mqtt, reconnect: true } } });
+    $("#haMsg").textContent = "Saved.";
+    haForm.dataset.sig = "";
+    setTimeout(refresh, 1500);
+  } catch (err) { $("#haMsg").textContent = err.message; }
 });
 
 // ================================================================== SETUP

@@ -12,6 +12,7 @@
   <nav class="tabs" id="tabs">
     <button data-tab="live" class="active">Live</button>
     <button data-tab="jobs">Timelapses</button>
+    <button data-tab="images">Images</button>
     <button data-tab="videos">Videos</button>
     <button data-tab="setup">Cameras &amp; storage</button>
   </nav>
@@ -195,6 +196,48 @@
   </dialog>
 </section>
 
+<!-- ============================== IMAGES ============================== -->
+<section id="tab-images" class="tab">
+  <div class="card img-toolbar">
+    <label>Timelapse <select id="imgJob"></select></label>
+    <label>Day <select id="imgDay"></select></label>
+    <label>Show <select id="imgStep">
+      <option value="1">every image</option><option value="5">every 5th</option><option value="10">every 10th</option>
+      <option value="30">every 30th</option><option value="60">every 60th</option></select></label>
+    <button class="secondary" id="imgRefresh" title="Read the folder again">Refresh</button>
+    <span class="grow"></span>
+    <span class="small muted" id="imgInfo"></span>
+  </div>
+  <div id="imgEmpty" class="empty" hidden></div>
+  <div id="imgGrid" class="img-grid"></div>
+  <div class="row gap pager" id="imgPager" hidden>
+    <button class="secondary" id="imgPrev">‹ Earlier</button>
+    <span id="imgPage" class="small"></span>
+    <button class="secondary" id="imgNext">Later ›</button>
+  </div>
+
+  <dialog id="viewer" class="viewer">
+    <div class="viewer-top">
+      <div><b id="vTime"></b> <span class="small muted" id="vName"></span></div>
+      <div class="row gap">
+        <a id="vDownload" class="button secondary small-btn" download>Download</a>
+        <button class="secondary small-btn" id="vClose">Close ✕</button>
+      </div>
+    </div>
+    <div class="viewer-img">
+      <button class="nav prev" id="vPrev" title="Previous (←)">‹</button>
+      <img id="vImg" alt="">
+      <button class="nav next" id="vNext" title="Next (→)">›</button>
+    </div>
+    <div class="viewer-bar">
+      <button id="vPlay" class="small-btn" title="Play the day as a quick preview (space)">▶ Play</button>
+      <select id="vSpeed" title="Preview speed"><option value="4">4 fps</option><option value="8" selected>8 fps</option><option value="15">15 fps</option></select>
+      <input type="range" id="vSlider" min="0" value="0">
+      <span class="small" id="vPos"></span>
+    </div>
+  </dialog>
+</section>
+
 <!-- ============================== VIDEOS ============================== -->
 <section id="tab-videos" class="tab">
   <h2>Make a video</h2>
@@ -236,6 +279,30 @@
       <div id="destList"></div>
     </div>
   </div>
+
+  <h2>Home Assistant</h2>
+  <form id="haForm" class="card">
+    <div class="row between wrap gap">
+      <h3 style="margin:0">MQTT <span id="mqttStatus" class="pill"></span></h3>
+      <span class="small muted" id="mqttDetail"></span>
+    </div>
+    <p class="small muted">Each timelapse and camera appears in Home Assistant as a device, with its status, last and next capture, frame count, a “problem” sensor, the latest image, an on/off switch and a “Capture now” button.</p>
+    <div class="form-grid">
+      <label>Broker <select name="mode">
+        <option value="auto">Home Assistant's MQTT (Mosquitto add-on)</option>
+        <option value="custom">Another broker</option>
+        <option value="off">Off</option></select></label>
+      <label class="mqtt-custom">Address <input name="host" placeholder="192.168.1.20"></label>
+      <label class="mqtt-custom">Port <input type="number" name="port" placeholder="1883"></label>
+      <label class="mqtt-custom">User name <input name="username" autocomplete="off"></label>
+      <label class="mqtt-custom">Password <input type="password" name="password" autocomplete="new-password"></label>
+      <label>Topic prefix <input name="base_topic" placeholder="panalapse"></label>
+      <label>Discovery prefix <input name="discovery_prefix" placeholder="homeassistant"></label>
+    </div>
+    <label class="check"><input type="checkbox" name="ha_notifications"> Show a notification in Home Assistant when a timelapse starts failing (cleared when it works again)</label>
+    <p class="small muted">Failures also fire the events <code>panalapse_capture_failed</code> and <code>panalapse_capture_recovered</code>, so an automation can send them to your phone.</p>
+    <div class="row gap"><button type="submit">Save</button><span id="haMsg" class="small"></span></div>
+  </form>
 
   <dialog id="camDialog">
     <form id="camForm" method="dialog">

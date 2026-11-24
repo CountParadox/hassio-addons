@@ -13,6 +13,7 @@ import os
 import posixpath
 import threading
 from dataclasses import dataclass
+from datetime import timezone
 from typing import Iterator
 
 import smbclient
@@ -124,13 +125,28 @@ class Destination:
         exts = (".jpg", ".jpeg")
         if self.type == "smb":
             self._smb_session()
-            for dirpath, _dirs, files in smbclient.walk(root):
-                for fn in files:
-                    if fn.lower().endswith(exts):
-                        full = dirpath + "\\" + fn
-                        st = smbclient.stat(full)
-                        yield full[len(self.full("")):].lstrip("\\").replace("\\", "/"), st.st_mtime
+            base_len = len(self.full(""))
+            # scandir returns times with the directory listing, so there's no
+            # extra round trip per file (which matters with thousands of frames)
+            stack = [root]
+            while stack:
+                d = stack.pop()
+                try:
+                    entries = list(smbclient.scandir(d))
+                except FileNotFoundError:
+                    continue
+                for e in entries:
+                    info = e.smb_info
+                    if info.file_attributes & 0x10:          # FILE_ATTRIBUTE_DIRECTORY
+                        stack.append(d + "\\" + e.name)
+                    elif e.name.lower().endswith(exts):
+                        t = info.last_write_time
+                        if t.tzinfo is None:
+                            t = t.replace(tzinfo=timezone.utc)
+                        yield (d + "\\" + e.name)[base_len:].lstrip("\\").replace("\\", "/"), t.timestamp()
         else:
+            if not os.path.isdir(root):
+                return
             for dirpath, _dirs, files in os.walk(root):
                 for fn in files:
                     if fn.lower().endswith(exts):

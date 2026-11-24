@@ -230,6 +230,7 @@ class Scheduler:
             raise ValueError("job has no camera")
         s.running = True
         when = when or datetime.now()
+        rel = None
         try:
             async with cam_entry.job_lock:
                 await self.prepare_camera(job, cam_entry)
@@ -249,6 +250,7 @@ class Scheduler:
                 if not name.lower().endswith((".jpg", ".jpeg")):
                     name += ".jpg"
                 rel = f"{folder.strip('/')}/{name}" if folder.strip("/") else name
+                rel = "/".join(p for p in rel.split("/") if p)
                 await dest.write(rel, data)
                 counters[job_id] = seq
                 self.app.store.save()
@@ -256,11 +258,19 @@ class Scheduler:
                 s.session_count += 1
             s.last_capture = datetime.now()
             s.last_error = None
+            self._report(job, True, None, data, rel)
             return data
         except (CameraError, OSError, ValueError, Exception) as e:  # noqa: B014 - report everything
             s.last_error = str(e) or type(e).__name__
             s.last_error_at = datetime.now()
             log.error("%s: capture failed: %s", job.get("name"), s.last_error)
+            self._report(job, False, s.last_error, None, None)
             raise
         finally:
             s.running = False
+
+    def _report(self, job, ok, error, image, rel):
+        try:
+            self.app.capture_done(job, ok, error, image, rel)
+        except Exception:
+            log.exception("reporting capture result failed")

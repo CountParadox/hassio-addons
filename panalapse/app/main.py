@@ -9,6 +9,11 @@ from datetime import datetime, timedelta
 
 from aiohttp import web
 
+import time
+
+from .gallery import Gallery, job_root, prune_thumbs
+from .mqtt import MQTT_DEFAULTS, MqttBridge, iso
+from .notify import HaNotifier
 from .panasonic import CONTROLS, CameraError, PanasonicCamera
 from .scheduler import Scheduler, next_capture
 from .storage import Destination, reset_sessions
@@ -69,6 +74,61 @@ class App:
             self.cameras[c["id"]] = CameraEntry(c)
         self.scheduler = Scheduler(self)
         self.renderer = Renderer(self)
+        self.gallery = Gallery(self)
+        self.mqtt = MqttBridge(self)
+        self.notifier = HaNotifier(self)
+
+    # ------------------------------------------------------------- status
+    def job_status(self, job: dict) -> dict:
+        """One timelapse's state, as sent over MQTT (and usable by any API)."""
+        s = self.scheduler.st(job["id"])
+        if not job.get("enabled"):
+            status = "disabled"
+        elif s.running:
+            status = "capturing"
+        elif s.last_error:
+            status = "error"
+        elif self.store.data["settings"].get("paused"):
+            status = "paused"
+        elif s.next_due:
+            status = "scheduled"
+        else:
+            status = "finished"
+        cam = self.store.get("cameras", job.get("camera_id", "")) or {}
+        return {
+            "status": status,
+            "problem": bool(s.last_error),
+            "enabled": bool(job.get("enabled")),
+            "camera": cam.get("name"),
+            "last_capture": iso(s.last_capture),
+            "next_capture": iso(s.next_due) if job.get("enabled") else None,
+            "frames": self.store.data["counters"].get(job["id"], 0),
+            "last_path": s.last_path,
+            "last_error": s.last_error,
+            "last_error_at": iso(s.last_error_at),
+            "warning": s.last_warning,
+        }
+
+    def capture_done(self, job: dict, ok: bool, error: str | None, image: bytes | None, rel: str | None):
+        """Called by the scheduler after every capture attempt."""
+        if ok and rel:
+            self.gallery.added(job, rel, time.time())
+        self.mqtt.job_updated(job["id"], image)
+        asyncio.create_task(self.notifier.job_result(job, ok, error))
+
+    async def health_loop(self):
+        """Check idle cameras now and then so 'online' stays true to life."""
+        while True:
+            await asyncio.sleep(30)
+            for e in list(self.cameras.values()):
+                if e.job_lock.locked() or time.monotonic() - e.client._last < 25:
+                    continue
+                try:
+                    await e.client.command("#O")
+                except CameraError:
+                    pass
+                except Exception:
+                    log.debug("health check failed", exc_info=True)
 
     def destination(self, dest_id: str | None) -> Destination | None:
         d = self.store.get("destinations", dest_id or "")
@@ -115,13 +175,16 @@ class App:
             "cameras": cams,
             "destinations": [strip(d) for d in self.store.data["destinations"]],
             "jobs": jobs,
-            "settings": self.store.data["settings"],
+            "settings": {k: v for k, v in self.store.data["settings"].items() if k != "mqtt"},
             "controls": [{"key": c.key, "label": c.label, "kind": c.kind, "options": c.options,
                           "min": c.vmin, "max": c.vmax, "hexwidth": c.hexwidth, "auto": c.auto,
                           "group": c.group, "center": c.center} for c in CONTROLS],
             "renders": [r.to_dict() for r in sorted(self.renderer.renders.values(),
                                                     key=lambda r: r.started, reverse=True)][:20],
             "videos": self.renderer.list_videos(),
+            "mqtt": self.mqtt.public(),
+            "ha": {"available": self.notifier.available,
+                   "notifications": self.store.data["settings"].get("ha_notifications", True)},
             "now": datetime.now().isoformat(timespec="seconds"),
         }
 
@@ -141,9 +204,15 @@ def build_app() -> web.Application:
 
     @routes.get("/")
     async def index(_):
-        resp = web.FileResponse(os.path.join(STATIC, "index.html"))
-        resp.headers["Cache-Control"] = "no-cache"
-        return resp
+        # Tag the script and stylesheet with their modified time, so a browser
+        # never keeps an old copy after the add-on is updated.
+        with open(os.path.join(STATIC, "index.html"), encoding="utf-8") as f:
+            html = f.read()
+        for name in ("app.js", "style.css"):
+            v = int(os.path.getmtime(os.path.join(STATIC, name)))
+            html = html.replace(f"static/{name}", f"static/{name}?v={v}")
+        return web.Response(text=html, content_type="text/html",
+                            headers={"Cache-Control": "no-cache"})
 
     @routes.get("/api/state")
     async def state(_):
@@ -389,6 +458,8 @@ def build_app() -> web.Application:
     async def delete_job(req):
         core.store.delete("jobs", req.match_info["jid"])
         core.scheduler.state.pop(req.match_info["jid"], None)
+        core.notifier.failing.pop(req.match_info["jid"], None)
+        core.mqtt.job_updated(req.match_info["jid"], None)
         return web.json_response({"ok": True})
 
     @routes.post("/api/jobs/{jid}/capture")
@@ -409,6 +480,55 @@ def build_app() -> web.Application:
         return web.Response(body=s.last_image, content_type="image/jpeg",
                             headers={"Cache-Control": "no-store"})
 
+    # -------------------------------------------------------------- images
+    def _job(req) -> dict:
+        job = core.store.get("jobs", req.match_info["jid"])
+        if not job:
+            raise web.HTTPNotFound(text="timelapse not found")
+        return job
+
+    @routes.get("/api/jobs/{jid}/days")
+    async def image_days(req):
+        job = _job(req)
+        try:
+            days = await core.gallery.days(job, refresh=bool(req.query.get("refresh")))
+        except Exception as ex:      # storage unreachable etc.
+            return err(ex, 502)
+        cam = core.store.get("cameras", job.get("camera_id", ""))
+        dest = core.destination(job.get("destination_id"))
+        return web.json_response({"ok": True, "days": days,
+                                  "folder": dest.full(job_root(job, cam)) if dest else None})
+
+    @routes.get("/api/jobs/{jid}/images")
+    async def image_list(req):
+        job = _job(req)
+        try:
+            imgs = await core.gallery.images(job, req.query.get("day", ""))
+        except Exception as ex:
+            return err(ex, 502)
+        return web.json_response({"ok": True, "images": imgs})
+
+    @routes.get("/api/jobs/{jid}/image")
+    async def image_get(req):
+        job = _job(req)
+        rel = req.query.get("p", "")
+        size = req.query.get("size", "full")
+        try:
+            if size == "full":
+                data = await core.gallery.read(job, rel)
+            else:
+                data = await core.gallery.thumb(job, rel, 640 if size == "medium" else 320)
+        except PermissionError as ex:
+            return err(ex, 403)
+        except FileNotFoundError:
+            raise web.HTTPNotFound()
+        except Exception as ex:
+            return err(ex, 502)
+        headers = {"Cache-Control": "private, max-age=86400"}
+        if req.query.get("download"):
+            headers["Content-Disposition"] = f'attachment; filename="{os.path.basename(rel)}"'
+        return web.Response(body=data, content_type="image/jpeg", headers=headers)
+
     @routes.post("/api/jobs/preview-schedule")
     async def preview_schedule(req):
         """Next few capture times for an unsaved job form."""
@@ -427,9 +547,28 @@ def build_app() -> web.Application:
     @routes.post("/api/settings")
     async def settings(req):
         b = await req.json()
+        settings = core.store.data["settings"]
         if "paused" in b:
-            core.store.data["settings"]["paused"] = bool(b["paused"])
+            settings["paused"] = bool(b["paused"])
+        if "ha_notifications" in b:
+            settings["ha_notifications"] = bool(b["ha_notifications"])
+        restart_mqtt = False
+        if isinstance(b.get("mqtt"), dict):
+            m = dict(MQTT_DEFAULTS)
+            m.update(settings.get("mqtt") or {})
+            for k in MQTT_DEFAULTS:
+                if k in b["mqtt"]:
+                    if k == "password" and not b["mqtt"][k]:
+                        continue          # blank = keep the saved password
+                    m[k] = int(b["mqtt"][k] or 1883) if k == "port" else str(b["mqtt"][k]).strip()
+            if m["mode"] not in ("auto", "custom", "off"):
+                return err(ValueError("MQTT mode must be auto, custom or off"))
+            restart_mqtt = m != settings.get("mqtt") or b["mqtt"].get("reconnect")
+            settings["mqtt"] = m
         core.store.save()
+        if restart_mqtt:
+            await core.mqtt.restart()
+        core.mqtt.job_updated("", None)      # push the new pause state etc.
         return web.json_response({"ok": True})
 
     # -------------------------------------------------------------- videos
@@ -483,6 +622,9 @@ def build_app() -> web.Application:
     async def on_start(_app):
         core.scheduler.start()
         core.renderer.start()
+        core.mqtt.start()
+        asyncio.create_task(core.health_loop())
+        asyncio.get_running_loop().run_in_executor(None, prune_thumbs)
         # Refresh camera info in the background so a new firmware / model is picked up.
         for cid in list(core.cameras):
             asyncio.create_task(_safe_probe(cid))
@@ -493,7 +635,11 @@ def build_app() -> web.Application:
         except Exception:
             log.warning("probe of %s failed", cid, exc_info=True)
 
+    async def on_stop(_app):
+        await core.mqtt.stop()
+
     app.on_startup.append(on_start)
+    app.on_shutdown.append(on_stop)
     app["core"] = core
     return app
 
