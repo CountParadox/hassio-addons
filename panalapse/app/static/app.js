@@ -878,6 +878,50 @@ destForm.addEventListener("submit", async (e) => {
   } catch (err) { $("#destFormMsg").textContent = err.message; }
 });
 $("#cancelCam").addEventListener("click", () => $("#camDialog").close());
+
+// ---- find cameras
+const findForm = $("#findForm");
+let findResults = [];
+$("#findCams").addEventListener("click", async () => {
+  $("#findMsg").textContent = ""; $("#findList").innerHTML = "";
+  $("#findDialog").showModal();
+  if (!findForm.targets.value) {
+    findForm.targets.placeholder = "Looking up your network…";
+    try { const r = await api("api/discover"); if (!findForm.targets.value) findForm.targets.value = r.subnets.join(", "); }
+    catch (err) { /* leave it for the user to type */ }
+    findForm.targets.placeholder = "192.168.1.0/24, 10.0.0.10-40";
+  }
+});
+$("#closeFind").addEventListener("click", () => $("#findDialog").close());
+findForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const go = $("#findGo"); go.disabled = true;
+  $("#findMsg").textContent = "Scanning…"; $("#findList").innerHTML = "";
+  try {
+    const r = await api("api/discover", { body: formData(findForm) });
+    findResults = r.found;
+    const n = r.found.filter((f) => f.status === "ok").length;
+    $("#findMsg").textContent = `Checked ${r.scanned} addresses in ${r.seconds} s` +
+      (r.found.length ? "" : ": no cameras answered.");
+    $("#findList").innerHTML = r.found.map((f, i) => `<div class="card item"><div>
+        <b>${esc(f.model || (f.status === "login" ? "Login needed" : "Camera"))}</b> <span class="muted">${esc(f.host)}</span>
+        <div class="sub">${f.status === "added" ? "Already added as " + esc(f.name) : f.status === "login" ? esc(f.detail) : "Panasonic AW camera"}</div></div>
+        ${f.status === "added" ? "" : `<button class="small-btn" data-find-add="${i}">Add</button>`}</div>`).join("");
+    if (n === 0 && r.found.some((f) => f.status === "login") && !findForm.username.value)
+      $("#findMsg").textContent += " Some devices want a login: enter the camera user name and password and scan again to confirm them.";
+  } catch (err) { $("#findMsg").textContent = err.message; }
+  go.disabled = false;
+});
+$("#findList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-find-add]"); if (!b) return;
+  const f = findResults[+b.dataset.findAdd];
+  $("#findDialog").close();
+  openCam(null);
+  camForm.host.value = f.host;
+  camForm.name.value = f.model ? `${f.model} (${f.host.split(".").pop()})` : "";
+  if (findForm.username.value) camForm.username.value = findForm.username.value;
+  if (findForm.password.value) camForm.password.value = findForm.password.value;
+});
 $("#cancelDest").addEventListener("click", () => $("#destDialog").close());
 $("#deleteCam").addEventListener("click", async () => {
   if (!confirm("Remove this camera? Timelapses using it will stop working until you pick another camera.")) return;

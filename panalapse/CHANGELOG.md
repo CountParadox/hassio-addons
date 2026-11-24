@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1
+- **Find cameras**: scans your network for Panasonic AW cameras and adds one with a click. Suggests the network Home Assistant is on, accepts subnets and ranges, and handles cameras that need a login.
+
 ## 0.2.0
 - New **Images** tab: browse saved stills by day, open full size, step with the arrow keys or by swiping, play a day back as a preview, download originals.
 - **MQTT** with Home Assistant discovery: a device per timelapse (status, last / next capture, frames, problem, last error, latest image, enable switch, capture-now button), a connection sensor per camera and a pause-all switch. Uses the Mosquitto add-on automatically, or any broker.

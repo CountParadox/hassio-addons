@@ -77,3 +77,4 @@ jobs:
           docker exec panalapse-test ffmpeg -version | head -1
           docker exec panalapse-test python3 -c "import PIL, paho.mqtt; print('Pillow', PIL.__version__, 'paho-mqtt', paho.mqtt.__version__)"
           curl -fsS http://localhost:8099/api/state | python3 -c "import sys, json; print('MQTT status:', json.load(sys.stdin)['mqtt']['status'])"
+          curl -fsS -X POST http://localhost:8099/api/discover -H 'Content-Type: application/json' -d '{"targets":"127.0.0.1-4"}'

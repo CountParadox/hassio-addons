@@ -271,7 +271,7 @@
 <section id="tab-setup" class="tab">
   <div class="setup-grid">
     <div>
-      <div class="row between"><h2>Cameras</h2><button id="newCam">+ Add camera</button></div>
+      <div class="row between"><h2>Cameras</h2><div class="row gap"><button id="findCams" class="secondary">Find cameras</button><button id="newCam">+ Add camera</button></div></div>
       <div id="camList"></div>
     </div>
     <div>
@@ -324,6 +324,22 @@
           <button type="button" class="secondary" id="cancelCam">Cancel</button>
           <button type="submit">Save</button></div>
       </div>
+    </form>
+  </dialog>
+
+  <dialog id="findDialog">
+    <form id="findForm" method="dialog">
+      <h2>Find cameras</h2>
+      <p class="small muted">Asks every address on the network for a Panasonic camera model. One short request per address; a /24 takes about 5–10 seconds.</p>
+      <div class="form-grid">
+        <label class="span2">Networks to scan <input name="targets" placeholder="192.168.1.0/24, 10.0.0.10-40"></label>
+        <label>User name <input name="username" autocomplete="off" placeholder="only if your cameras need one"></label>
+        <label>Password <input type="password" name="password" autocomplete="new-password"></label>
+      </div>
+      <div class="row gap"><button type="submit" id="findGo">Scan</button><span id="findMsg" class="small"></span></div>
+      <div id="findList" class="find-list"></div>
+      <div class="row between dialog-actions"><span></span>
+        <button type="button" class="secondary" id="closeFind">Close</button></div>
     </form>
   </dialog>
 

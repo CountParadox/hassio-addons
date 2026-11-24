@@ -11,6 +11,7 @@ from aiohttp import web
 
 import time
 
+from . import discover
 from .gallery import Gallery, job_root, prune_thumbs
 from .mqtt import MQTT_DEFAULTS, MqttBridge, iso
 from .notify import HaNotifier
@@ -255,6 +256,44 @@ def build_app() -> web.Application:
         core.store.delete("cameras", cid)
         core.cameras.pop(cid, None)
         return web.json_response({"ok": True})
+
+    # ------------------------------------------------------------ discovery
+    def _known_hosts() -> dict:
+        return {c["host"]: c for c in core.store.data["cameras"]
+                if int(c.get("port") or 80) == 80}
+
+    @routes.get("/api/discover")
+    async def discover_info(_):
+        subnets = await discover.host_subnets()
+        for host in _known_hosts():
+            try:
+                net = str(discover.ipaddress.ip_interface(host + "/24").network)
+            except ValueError:          # a host name, not an IP
+                continue
+            if net not in subnets:
+                subnets.append(net)
+        return web.json_response({"subnets": subnets})
+
+    @routes.post("/api/discover")
+    async def discover_scan(req):
+        body = await req.json()
+        try:
+            addrs = discover.parse_targets(body.get("targets") or "")
+        except ValueError as e:
+            return err(e)
+        if not addrs:
+            return err(ValueError("Enter a subnet such as 192.168.1.0/24"))
+        known = _known_hosts()
+        res = await discover.scan(addrs, (body.get("username") or "").strip(),
+                                  body.get("password") or "", skip=set(known))
+        for host in sorted(set(known) & set(addrs), key=lambda h: discover.ipaddress.ip_address(h)):
+            c = known[host]
+            res["found"].append({"host": host, "status": "added", "name": c.get("name"),
+                                 "model": (c.get("info") or {}).get("model")})
+        res["found"].sort(key=lambda d: discover.ipaddress.ip_address(d["host"]))
+        log.info("Camera scan: %d addresses in %ss, %d found", res["scanned"], res["seconds"],
+                 sum(1 for f in res["found"] if f["status"] != "added"))
+        return web.json_response(res)
 
     @routes.post("/api/cameras/{cid}/probe")
     async def probe(req):

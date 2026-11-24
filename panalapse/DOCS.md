@@ -4,7 +4,7 @@ Timelapse capture for Panasonic AW-series PTZ cameras, all over IP:
 
 - **Live preview** with pan / tilt / zoom / focus controls (hold a button, or use the arrow keys), plus one-touch auto focus, white balance and black balance
 - **Presets**: save the current position to any slot (1–100) with a name and a thumbnail, and recall it
-- **Several cameras**, each with a nickname
+- **Several cameras**, each with a nickname, and a network scan that finds them for you
 - **Scheduled timelapses**: interval, start / end time (overnight windows allowed), days of the week, optional date range
 - **Before each shot**: go to a preset and wait for it to settle, apply auto or manual exposure, send extra commands, wake the camera from standby
 - **Saves stills straight to a network share** (UNC path such as `\\nas\timelapse\site1`, over SMB 2/3), or to `/share` / `/media`
@@ -16,10 +16,24 @@ Timelapse capture for Panasonic AW-series PTZ cameras, all over IP:
 ## Getting started
 
 1. Open **Panalapse** from the sidebar.
-2. **Cameras & storage → Add camera**: give it a nickname, its IP address, and the user name / password (only needed if the camera asks for them). The add-on works out the model, the largest snapshot size and which image settings the camera supports.
+2. **Cameras & storage → Find cameras** scans your network and lists the AW cameras it finds; press **Add** on one. Or use **Add camera**: give it a nickname, its IP address, and the user name / password (only needed if the camera asks for them). The add-on works out the model, the largest snapshot size and which image settings the camera supports.
 3. **Add storage**: pick *Network share*, enter the UNC path (for example `\\192.168.1.10\timelapse`) and a user who can write to it. Saving runs a write test.
 4. **Live**: frame the shot, then save it as a preset.
 5. **Timelapses → New timelapse**: choose the camera, the storage, how often and when, and the preset. Use **Test shot** to check it, then **Save**.
+
+## Finding cameras
+
+**Find cameras** asks every address on the networks you list for a Panasonic camera model, using the same command Detect uses. It fills in the network Home Assistant is on and those of cameras you've already added; you can type others:
+
+- a subnet: `192.168.1.0/24`
+- a range: `10.0.0.10-40`
+- several, separated by commas
+
+Each address gets one short request, so it won't swamp the cameras. A /24 (254 addresses) takes about 5–10 seconds, and one scan covers at most 1024 addresses.
+
+If your cameras need a login to answer, enter the user name and password before scanning. Without one, a camera that needs a login shows as **Login needed**. So can other devices with a web login, such as a router; scanning again with the camera's login confirms which ones are cameras. Cameras you've already added are marked and aren't contacted.
+
+Panasonic's own *Easy IP Setup* tool uses a broadcast that doesn't get out of an add-on's network, which is why Panalapse scans instead. It only finds cameras on the normal web port (80).
 
 ## File names
 

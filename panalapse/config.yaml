@@ -1,5 +1,5 @@
 name: Panalapse
-version: "0.2.0"
+version: "0.2.1"
 slug: panalapse
 description: Timelapse capture, live preview, PTZ and presets for Panasonic AW-series PTZ cameras
 url: https://github.com/CountParadox/hassio-addons/tree/master/panalapse
@@ -14,6 +14,8 @@ panel_title: Panalapse
 services:
   - mqtt:want
 homeassistant_api: true
+# Read the host's network so "Find cameras" knows which subnet to scan
+hassio_api: true
 map:
   - share:rw
   - media:rw
