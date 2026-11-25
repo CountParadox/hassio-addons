@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+- Snapshot size detection now goes by the size of the pictures the camera actually sends. An AW-HE40 answers every size, including 3840, with the JPEG size set up on the camera (640 or 1280), so it was detected as a 3840 camera. If you added an HE40 before this version, press **Detect** on it again.
+- Tested on AW-HE40: stills from the video stream are 1920×1080.
+- New icon and logo.
+
 ## 0.3.0
 - **4K stills**: a timelapse can take each picture from the camera's H.264 video stream instead of its snapshot function, at the stream's full resolution (3840×2160 on an AW-UE4, whose snapshots stop at 1280). About 2 seconds per shot.
 - Per-camera setting for the video stream address, for cameras that don't use Panasonic's default.

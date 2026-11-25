@@ -89,6 +89,9 @@ If the camera doesn't support a function, or it isn't allowed in the current mod
   - Pan and tilt move within the picture, so they only work once you've zoomed in.
   - Focus can't be controlled over IP: **Auto once → Focus** reports "not supported".
   - **Auto once → White** works when white balance is set to AWB A or AWB B.
+- **AW-HE40** (tested, firmware Ver.2.1):
+  - Snapshots come at the sizes set up for JPEG in the camera's own web settings, whatever size is asked for: 640×360 or 1280×720. Detect works out which one your camera sends.
+  - *Full resolution from the video stream* gives **1920×1080**, in about 1.5 seconds per shot.
 - Larger models (UE150, UE100, HE130 …) support 1920 snapshots and the full manual exposure set.
 
 **Detect** (Cameras & storage) works out what your camera allows. It tries each setting and then puts the original value back, so the picture changes briefly for about 30 seconds. It runs when you add a camera or press Detect. When the add-on starts it only re-reads the model and the current values.

@@ -1,5 +1,5 @@
 name: Panalapse
-version: "0.3.0"
+version: "0.3.1"
 slug: panalapse
 description: Timelapse capture, live preview, PTZ and presets for Panasonic AW-series PTZ cameras
 url: https://github.com/CountParadox/hassio-addons/tree/master/panalapse

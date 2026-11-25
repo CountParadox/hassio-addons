@@ -384,16 +384,35 @@ class PanasonicCamera:
 
     # ------------------------------------------------------------- snapshot
     async def detect_max_resolution(self) -> int | None:
+        """Largest snapshot size the camera really delivers. Some models refuse
+        sizes they can't do (AW-UE4: HTTP 500 above 1280). Others answer every
+        size with whatever JPEG streams are set up on the camera (an AW-HE40 may
+        send 640x360 when asked for 3840), so the width of the pictures that
+        come back is what counts. A frame at the wrong width can also be a stale
+        one from a resolution switch (AW-UE4), so any width the camera has sent
+        proves it can do that size."""
+        widest = 0
         for res in SNAP_RESOLUTIONS:
-            try:
-                r = await self._get("/cgi-bin/camera", {"resolution": str(res)}, timeout=12)
-            except CameraError:
-                continue
-            if r.status_code == 200 and r.headers.get("content-type", "").startswith("image"):
-                self.max_resolution = res
+            for _ in range(2):
+                try:
+                    r = await self._get("/cgi-bin/camera", {"resolution": str(res)}, timeout=12)
+                except CameraError:
+                    break
+                if r.status_code != 200 or not r.content.startswith(b"\xff\xd8"):
+                    break
                 self._snap_res = res
-                return res
-        return None
+                size = jpeg_size(r.content)
+                width = size[0] if size else res
+                widest = max(widest, width)
+                if abs(width - res) <= 8:
+                    break
+            if widest and widest >= res - 8:
+                break
+        if not widest:
+            return None
+        best = next((s for s in SNAP_RESOLUTIONS if s <= widest + 8), SNAP_RESOLUTIONS[-1])
+        self.max_resolution = best
+        return best
 
     def stream_url(self, path: str = "", hide_password: bool = False) -> str:
         path = (path or STREAM_PATH).strip()
