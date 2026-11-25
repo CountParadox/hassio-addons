@@ -133,6 +133,8 @@ class Gallery:
 
 def make_thumb(data: bytes, width: int) -> bytes:
     im = Image.open(io.BytesIO(data))
+    if im.width <= width:
+        return data                          # already small enough: keep the original
     im.draft("RGB", (width, width))          # fast JPEG downscale while decoding
     im = im.convert("RGB")
     im.thumbnail((width, width * 4))

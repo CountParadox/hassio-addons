@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+- **4K stills**: a timelapse can take each picture from the camera's H.264 video stream instead of its snapshot function, at the stream's full resolution (3840×2160 on an AW-UE4, whose snapshots stop at 1280). About 2 seconds per shot.
+- Per-camera setting for the video stream address, for cameras that don't use Panasonic's default.
+- The image viewer loads frames at 1920 wide, so large stills step quickly; Download still gives the original.
+- The Latest image sent to Home Assistant is scaled down to 1920 wide when the still is bigger.
+
 ## 0.2.2
 - Fixed the live preview failing when a camera was set to a bigger preview size than it supports (e.g. 1920 on an AW-UE4) before it had been detected. The add-on now steps down to the largest size that works and remembers it.
 - A camera that was offline when it was added, or when the add-on started, is now detected as soon as it answers.

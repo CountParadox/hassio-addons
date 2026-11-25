@@ -12,10 +12,10 @@ from aiohttp import web
 import time
 
 from . import discover
-from .gallery import Gallery, job_root, prune_thumbs
+from .gallery import Gallery, job_root, make_thumb, prune_thumbs
 from .mqtt import MQTT_DEFAULTS, MqttBridge, iso
 from .notify import HaNotifier
-from .panasonic import CONTROLS, CameraError, PanasonicCamera
+from .panasonic import CONTROLS, CameraError, PanasonicCamera, jpeg_size
 from .scheduler import Scheduler, next_capture
 from .storage import Destination, reset_sessions
 from .store import CAMERA_DEFAULTS, DATA_DIR, JOB_DEFAULTS, Store
@@ -120,6 +120,11 @@ class App:
         """Called by the scheduler after every capture attempt."""
         if ok and rel:
             self.gallery.added(job, rel, time.time())
+        if image is not None and (jpeg_size(image) or (0, 0))[0] > 1920:
+            try:    # a 4K still is a lot to push through MQTT for a dashboard picture
+                image = make_thumb(image, 1920)
+            except Exception:
+                log.debug("couldn't shrink image for MQTT", exc_info=True)
         self.mqtt.job_updated(job["id"], image)
         asyncio.create_task(self.notifier.job_result(job, ok, error))
 
@@ -236,7 +241,7 @@ def build_app() -> web.Application:
     async def save_camera(req):
         body = await req.json()
         allowed = {k: body[k] for k in ("id", "name", "host", "port", "username", "password",
-                                        "preview_resolution") if k in body}
+                                        "preview_resolution", "stream_path") if k in body}
         if not allowed.get("host"):
             return err(ValueError("Camera IP / host is required"))
         allowed["host"] = allowed["host"].strip().removeprefix("http://").rstrip("/")
@@ -583,7 +588,7 @@ def build_app() -> web.Application:
             if size == "full":
                 data = await core.gallery.read(job, rel)
             else:
-                data = await core.gallery.thumb(job, rel, 640 if size == "medium" else 320)
+                data = await core.gallery.thumb(job, rel, {"large": 1920, "medium": 640}.get(size, 320))
         except PermissionError as ex:
             return err(ex, 403)
         except FileNotFoundError:

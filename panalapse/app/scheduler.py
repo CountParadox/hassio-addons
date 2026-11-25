@@ -7,7 +7,7 @@ import math
 import re
 from datetime import date, datetime, time as dtime, timedelta
 
-from .panasonic import CONTROLS, CameraError
+from .panasonic import CONTROLS, STREAM_RESOLUTION, CameraError
 
 log = logging.getLogger(__name__)
 
@@ -235,7 +235,10 @@ class Scheduler:
             async with cam_entry.job_lock:
                 await self.prepare_camera(job, cam_entry)
                 res = int(job.get("resolution") or 0) or cam_entry.max_resolution()
-                data = await cam_entry.client.snapshot(res)
+                if res == STREAM_RESOLUTION:
+                    data = await cam_entry.client.stream_frame(cam_entry.config.get("stream_path", ""))
+                else:
+                    data = await cam_entry.client.snapshot(res)
             cam_entry.last_frame = data
             s.last_image = data
             if save:

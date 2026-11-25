@@ -155,7 +155,8 @@
         <div class="form-grid">
           <label>Go to preset <select name="preset"></select></label>
           <label>Wait after moving (s) <input type="number" name="settle_seconds" min="0" max="120" step="0.5"></label>
-          <label>Snapshot size <select name="resolution"></select></label>
+          <label>Picture size <select name="resolution"></select>
+            <span class="small muted" id="resNote" hidden>Grabbed from the camera's H.264 video (3840×2160 on an AW-UE4). Takes about 2 seconds per shot, so use intervals of 5 seconds or more.</span></label>
           <label class="check"><input type="checkbox" name="power_on"> Wake camera from standby</label>
           <label class="check span2" title="Turn off only if nothing else ever moves or adjusts this camera"><input type="checkbox" name="reapply"> Re-send preset and settings before every shot (safest if anything else also controls the camera)</label>
         </div>
@@ -316,6 +317,7 @@
           <option value="0">Largest the camera offers</option><option value="1920">1920</option><option value="1280">1280</option><option value="640">640</option></select></label>
         <label>User name <input name="username" autocomplete="off"></label>
         <label>Password <input type="password" name="password" autocomplete="new-password" placeholder="unchanged"></label>
+        <label class="span2">Video stream for full-resolution stills <input name="stream_path" placeholder="MediaInput/h264/stream_1 (Panasonic default)"></label>
       </div>
       <p class="small muted">Tip: keep the preview size the same as your timelapse snapshot size. Some models (e.g. AW-UE4) take ~5 s to switch sizes.</p>
       <div class="row between dialog-actions">

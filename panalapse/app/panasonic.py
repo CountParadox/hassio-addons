@@ -3,7 +3,9 @@
 Every call goes over plain HTTP:
   /cgi-bin/aw_ptz?cmd=#XXX&res=1   pan/tilt/zoom/focus/preset/power ("#" commands)
   /cgi-bin/aw_cam?cmd=XXX&res=1    camera / image settings
-  /cgi-bin/camera?resolution=N     JPEG still
+  /cgi-bin/camera?resolution=N     JPEG still (AW-UE4: 1280 at most)
+  rtsp://host/MediaInput/h264/stream_1   H.264 video; one frame of it gives a
+                                         full-resolution (e.g. 4K) still
 
 The cameras' embedded web servers are fragile: they close the connection after
 every request and hang if hammered. So each camera gets one lock and a minimum
@@ -13,8 +15,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import re
 import struct
 import time
+from urllib.parse import quote
 from dataclasses import dataclass, field
 
 import httpx
@@ -23,6 +28,9 @@ log = logging.getLogger(__name__)
 
 MIN_GAP = 0.15          # Panasonic asks for >=130 ms between commands
 SNAP_RESOLUTIONS = [3840, 1920, 1280, 640, 320]
+STREAM_RESOLUTION = -1   # job "resolution" value meaning "a frame from the video stream"
+STREAM_PATH = "MediaInput/h264/stream_1"
+STREAM_TIMEOUT = 25
 
 
 class CameraError(Exception):
@@ -386,6 +394,47 @@ class PanasonicCamera:
                 self._snap_res = res
                 return res
         return None
+
+    def stream_url(self, path: str = "", hide_password: bool = False) -> str:
+        path = (path or STREAM_PATH).strip()
+        if path.startswith("rtsp://"):
+            return path
+        cred = ""
+        if self.username:
+            pw = "***" if hide_password else quote(self.password, safe="")
+            cred = f"{quote(self.username, safe='')}:{pw}@"
+        return f"rtsp://{cred}{self.host}/{path.lstrip('/')}"
+
+    async def stream_frame(self, path: str = "") -> bytes:
+        """Grab one frame of the camera's RTSP video as a JPEG, at the stream's
+        full resolution (3840x2160 on an AW-UE4). Takes about 2 seconds."""
+        url = self.stream_url(path)
+        cmd = [os.environ.get("FFMPEG", "ffmpeg"), "-hide_banner", "-loglevel", "error", "-nostdin",
+               "-rtsp_transport", "tcp", "-timeout", str(10_000_000), "-i", url,
+               "-frames:v", "1", "-an", "-q:v", "2", "-f", "image2pipe", "-c:v", "mjpeg", "-"]
+        proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.PIPE)
+        try:
+            out, err = await asyncio.wait_for(proc.communicate(), STREAM_TIMEOUT)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            self.last_error = "video stream: no picture (timed out)"
+            raise CameraError(f"{self.host}: {self.last_error}")
+        if proc.returncode != 0 or not out.startswith(b"\xff\xd8"):
+            lines = err.decode(errors="replace").strip().splitlines()
+            msg = lines[-1] if lines else f"ffmpeg exit code {proc.returncode}"
+            msg = re.sub(r"rtsp://[^@\s]*@", "rtsp://", msg)         # never show the password
+            msg = re.sub(r"^\[[^\]]*\]\s*", "", msg)
+            if re.search(r"Error number -1(38|10)|Connection refused|timed out", msg):
+                msg = "can't connect to the camera's video stream (RTSP, port 554)"
+            elif "404" in msg:
+                msg += f" - check the video stream path ({self.stream_url(path, hide_password=True)})"
+            elif "401" in msg:
+                msg += " - the camera wants a user name and password for its video stream"
+            self.last_error = f"video stream: {msg}"
+            raise CameraError(f"{self.host}: {self.last_error}")
+        return out
 
     async def snapshot(self, resolution: int = 1280, verify: bool = True) -> bytes:
         """Fetch a JPEG. When the resolution changes, some models (e.g. AW-UE4)

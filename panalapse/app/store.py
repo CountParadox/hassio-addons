@@ -20,6 +20,7 @@ DEFAULT = {
 CAMERA_DEFAULTS = {
     "name": "", "host": "", "port": 80, "username": "", "password": "",
     "preview_resolution": 0,      # 0 = camera's max snapshot size
+    "stream_path": "",            # RTSP path for full-resolution stills; "" = Panasonic default
     "presets": {},                # "1" -> {"name": str, "thumb": bool}
     "info": {},                   # last probe result
 }
@@ -42,7 +43,7 @@ JOB_DEFAULTS = {
     "custom_commands": "",                # one command per line, sent before each capture
     "power_on": True,                     # wake the camera from standby if needed
     "reapply": True,                      # re-send preset + settings before every shot
-    "resolution": 0,                      # 0 = camera max
+    "resolution": 0,                      # 0 = largest snapshot, -1 = frame from video stream
     "folder_template": "{job}/{date}",
     "filename_template": "{job}_{datetime}.jpg",
 }

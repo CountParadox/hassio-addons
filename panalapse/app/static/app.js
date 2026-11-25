@@ -448,11 +448,14 @@ function fillJobCameraBits(job) {
   opts.push(["other", "Other slot number…"]);
   options(jobForm.preset, opts, cur);
   const max = cam?.info?.max_resolution;
-  const res = [["0", `Largest${max ? ` (${max})` : ""}`], ...[3840, 1920, 1280, 640].filter((r) => !max || r <= max).map((r) => [String(r), String(r)])];
+  const res = [["0", `Largest snapshot${max ? ` (${max})` : ""}`], ...[3840, 1920, 1280, 640].filter((r) => !max || r <= max).map((r) => [String(r), String(r)]),
+    ["-1", "Full resolution from the video stream (e.g. 4K)"]];
   options(jobForm.resolution, res, String(job?.resolution ?? jobForm.resolution.value ?? 0));
+  $("#resNote").hidden = jobForm.resolution.value !== "-1";
   controlInputs($("#jobExposure"), cam, job ? job.exposure : readControlInputs($("#jobExposure")));
   syncExposureVisibility();
 }
+jobForm.resolution.addEventListener("change", () => ($("#resNote").hidden = jobForm.resolution.value !== "-1"));
 function syncExposureVisibility() {
   const manual = jobForm.exposure_mode.value === "manual";
   $("#jobExposure").hidden = !manual;
@@ -725,7 +728,7 @@ $("#imgGrid").addEventListener("click", (e) => {
 // ---- viewer
 let vIdx = 0, vTimer = null;
 const vList = () => shownImages();
-function vShow(i, size = "full") {
+function vShow(i, size = "large") {
   const list = vList();
   if (!list.length) return;
   vIdx = Math.max(0, Math.min(list.length - 1, i));

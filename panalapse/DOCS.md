@@ -7,6 +7,7 @@ Timelapse capture for Panasonic AW-series PTZ cameras, all over IP:
 - **Several cameras**, each with a nickname, and a network scan that finds them for you
 - **Scheduled timelapses**: interval, start / end time (overnight windows allowed), days of the week, optional date range
 - **Before each shot**: go to a preset and wait for it to settle, apply auto or manual exposure, send extra commands, wake the camera from standby
+- **Full-resolution stills**: grab 4K frames from the camera's video stream when its snapshots are smaller (AW-UE4 snapshots stop at 1280)
 - **Saves stills straight to a network share** (UNC path such as `\\nas\timelapse\site1`, over SMB 2/3), or to `/share` / `/media`
 - **Turns a folder of stills into an MP4** (with optional flicker reduction), and copies it back to the share
 - **Images tab**: browse the saved stills day by day, open any frame full size, and play a day back as a quick preview
@@ -57,6 +58,19 @@ Each timelapse can either **leave the camera alone**, set it to **Auto** (iris, 
 
 For anything the form doesn't cover, add raw Panasonic commands under *Extra commands*, one per line, e.g. `OSD:48:3A`. Commands starting with `#` go to `aw_ptz`, the rest to `aw_cam`. You can try commands on the Live page under *Send a raw command*.
 
+## Picture size and 4K stills
+
+Each timelapse has a **Picture size**:
+
+- **Largest snapshot** (or a fixed size): a JPEG from the camera's snapshot function. It's quick, but some models limit it. The AW-UE4 stops at 1280×720.
+- **Full resolution from the video stream**: one frame of the camera's H.264 video (RTSP), saved as a high-quality JPEG. On an AW-UE4 that's **3840×2160**. Each shot takes about 2 seconds, so use intervals of 5 seconds or more.
+
+Stream frames come from compressed video, so the finest texture is a little softer than a true photo, but there's far more detail than in an enlarged 1280 snapshot. Raising the stream's bitrate in the camera's own web settings (H.264, stream 1) can help further.
+
+The stream address defaults to `rtsp://<camera>/MediaInput/h264/stream_1`. If your camera uses a different one, set **Video stream for full-resolution stills** on the camera (Cameras & storage → Edit). Enter either a path or a full `rtsp://` address. If the camera has a user name and password, they're used for the stream as well.
+
+The live preview always uses snapshots, because they're much faster. The **Latest image** sent to Home Assistant over MQTT is scaled down to 1920 wide. The full image is on your storage. The Images viewer also shows frames at 1920 wide; **Download** gives the original.
+
 ### Auto once
 
 The **Auto once** buttons on the Live page run the camera's one-shot functions:
@@ -70,7 +84,7 @@ If the camera doesn't support a function, or it isn't allowed in the current mod
 ### Model notes
 
 - **AW-UE4** (tested, firmware V01.80):
-  - Snapshots go up to 1280×720. Changing snapshot size takes the camera about 5 seconds, so keep the preview size the same as the timelapse size (the default, "largest", does that).
+  - Snapshots go up to 1280×720. For 4K, set the timelapse's *Picture size* to *Full resolution from the video stream*. Changing snapshot size takes the camera about 5 seconds, so keep the preview size the same as the timelapse size (the default, "largest", does that).
   - Over IP it lets you change **brightness (−4…+4)** and **white balance** (ATW, AWB A/B, 3200K, 5600K). Iris, gain and shutter are read-only.
   - Pan and tilt move within the picture, so they only work once you've zoomed in.
   - Focus can't be controlled over IP: **Auto once → Focus** reports "not supported".
@@ -153,6 +167,7 @@ With MQTT you can trigger on the timelapse's **Problem** sensor instead, for exa
 
 - **Camera shows offline**: check you can open `http://<camera-ip>/` from the HA host's network. These cameras' web servers can stop answering for a short while if they get too many requests too fast; Panalapse spaces its requests out, but other software polling the camera at the same time can still trigger it.
 - **Live picture doesn't load**: the message under the picture now says why. "Larger than this camera offers" means the camera's *Preview size* (Cameras & storage → Edit) is bigger than it supports; set it to *Largest the camera offers*.
+- **"video stream" errors with 4K stills**: "can't connect" means port 554 (RTSP) isn't reachable from Home Assistant. "404" means the stream path is wrong for your camera.
 - **"ER3" errors** when applying settings: the camera refused that value in its current mode (for example, setting the iris position while the iris is on auto).
 - **MQTT shows "no broker"**: install and start the Mosquitto broker add-on, then press **Save** on the Home Assistant card (or restart Panalapse).
 - **Storage test fails**: use the server's IP instead of its name, check that the share allows SMB2 or SMB3, and for a domain account fill in *Domain*.

@@ -8,6 +8,7 @@ Timelapse capture for Panasonic AW-series PTZ cameras, all over IP.
 - Presets with names and thumbnails
 - Several cameras, each with a nickname, and a network scan to find them
 - Scheduled timelapses (interval, times, days, date range) with auto or manual exposure
+- 4K stills from the camera's video stream (AW-UE4 snapshots stop at 1280)
 - Saves stills straight to an SMB network share (UNC path) or to `/share` / `/media`
 - Turns a folder of stills into an MP4
 - Image browser: look through the saved stills by day and play them back
